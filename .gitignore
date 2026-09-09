@@ -1,0 +1,104 @@
+# =============================================================================
+# What must never reach the repository, and why.
+#
+# Two categories matter more than the rest: real credentials (.env.local, the
+# generated session secret) and real client content (.cms-data/, public/uploads
+# — both hold whatever the client typed and uploaded while testing).
+# =============================================================================
+
+# --- Dependencies ------------------------------------------------------------
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.pnpm-store/
+
+# --- Build output ------------------------------------------------------------
+/.next/
+/out/
+/build
+/dist
+.turbo/
+.vercel
+
+# --- TypeScript / tooling caches ---------------------------------------------
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+.cache/
+
+# --- Tests -------------------------------------------------------------------
+/coverage
+*.lcov
+
+# --- Environment and secrets -------------------------------------------------
+# .env.example is the documented template and IS committed. Nothing else is:
+# .env.local carries the service-role key, which bypasses row level security.
+.env*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# --- CMS local development data ----------------------------------------------
+# Written by the `local` database adapter when no backend is configured:
+# one JSON file per collection (pages.json, posts.json, media.json, users.json,
+# menus.json, redirects.json, activity_log.json), the `_kv.json` singleton
+# store, and the development session secret generated on first boot.
+#
+# It is a working database and a working credential. It is also a client's
+# half-finished content. None of that belongs in version control.
+/.cms-data/
+/.cms-data/**
+
+# --- Media uploaded through the local storage adapter ------------------------
+# `CMS_STORAGE=local` writes here so Next can serve the files statically.
+# Real projects use Supabase Storage or S3; these are development leftovers.
+/public/uploads/
+/public/uploads/**
+
+# --- Logs --------------------------------------------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# --- Editors and IDEs --------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# --- AI assistant local state ------------------------------------------------
+# CLAUDE.md and .claude/settings.json are shared project rules and ARE
+# committed. Per-developer overrides are not.
+.claude/settings.local.json
+.claude/*.local.json
+
+# --- Operating system --------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Scratch -----------------------------------------------------------------
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.local

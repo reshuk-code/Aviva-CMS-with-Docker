@@ -1,0 +1,50 @@
+import { cva, type VariantProps } from "class-variance-authority";
+import type { ComponentProps } from "react";
+
+import { cn } from "@/lib/utils";
+import type { ContentStatus } from "@/types/common";
+
+const badgeVariants = cva(
+  "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
+  {
+    variants: {
+      tone: {
+        neutral: "border-border bg-muted text-muted-foreground",
+        success:
+          "border-transparent bg-[color-mix(in_oklch,var(--success)_18%,transparent)] text-[var(--success)]",
+        warning:
+          "border-transparent bg-[color-mix(in_oklch,var(--warning)_20%,transparent)] text-[color-mix(in_oklch,var(--warning)_75%,var(--foreground))]",
+        danger:
+          "border-transparent bg-[color-mix(in_oklch,var(--destructive)_15%,transparent)] text-destructive",
+        info: "border-transparent bg-accent text-accent-foreground",
+      },
+    },
+    defaultVariants: { tone: "neutral" },
+  },
+);
+
+export function Badge({
+  className,
+  tone,
+  ...props
+}: ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+}
+
+const STATUS_TONE: Record<ContentStatus, VariantProps<typeof badgeVariants>["tone"]> = {
+  published: "success",
+  draft: "neutral",
+  scheduled: "info",
+  trash: "danger",
+};
+
+const STATUS_LABEL: Record<ContentStatus, string> = {
+  published: "Published",
+  draft: "Draft",
+  scheduled: "Scheduled",
+  trash: "Trash",
+};
+
+export function StatusBadge({ status }: { status: ContentStatus }) {
+  return <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>;
+}
