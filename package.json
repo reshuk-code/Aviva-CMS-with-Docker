@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint",
+    "check": "npm run typecheck && npm run lint && npm run cms:routes",
     "cms:routes": "node scripts/scan-routes.mjs",
     "cms:secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "cms:reset": "node scripts/reset-local-data.mjs"

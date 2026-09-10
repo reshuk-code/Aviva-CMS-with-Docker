@@ -44,6 +44,8 @@ export interface TourFormProps {
   tour: TourPackage | null;
   /** Destinations this tour can belong to. */
   destinationOptions: { id: string; name: string }[];
+  /** Activities this tour can be tagged with. */
+  activityOptions: { id: string; name: string }[];
   siteUrl: string;
   /** Where the frontend mounts tours. For the slug hint only. */
   basePath?: string;
@@ -61,6 +63,7 @@ export interface TourFormProps {
 export function TourForm({
   tour,
   destinationOptions,
+  activityOptions,
   siteUrl,
   basePath = "/tours",
   canPublish,
@@ -80,6 +83,12 @@ export function TourForm({
 
   const errors = state.fieldErrors ?? {};
   const season = new Set(tour?.bestSeason ?? []);
+
+  const taggedActivities = new Set(tour?.activityIds ?? []);
+  const listedActivities = new Set(activityOptions.map((option) => option.id));
+  const unlistedActivityIds = (tour?.activityIds ?? []).filter(
+    (id) => !listedActivities.has(id),
+  );
 
   /**
    * Submitting by hand rather than through `<form action=…>`: React resets
@@ -600,12 +609,44 @@ export function TourForm({
                 )}
               </Field>
 
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium text-foreground">
+                  Activities
+                </legend>
+
+                {activityOptions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No activities yet. Add some under Activities and they will
+                    appear here.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {activityOptions.map((option) => (
+                      <CheckboxField
+                        key={option.id}
+                        id={`activityIds-${option.id}`}
+                        name="activityIds"
+                        value={option.id}
+                        label={option.name}
+                        defaultChecked={taggedActivities.has(option.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  What this tour involves. Used to cross-list it on activity
+                  pages.
+                </p>
+              </fieldset>
+
               {/*
-                `activityIds` is stored and round-trips, but has no picker yet:
-                there is nothing to pick until the activities module lands.
-                TODO(phase-2): an activity multi-select here.
+                Ids the picker cannot show — an activity moved to trash, or the
+                whole module switched off for this client — are posted back
+                verbatim. Without this, opening a tour would silently strip
+                tags whose activity happened to be hidden at the time.
               */}
-              {(tour?.activityIds ?? []).map((id) => (
+              {unlistedActivityIds.map((id) => (
                 <input key={id} type="hidden" name="activityIds" value={id} />
               ))}
             </CardBody>

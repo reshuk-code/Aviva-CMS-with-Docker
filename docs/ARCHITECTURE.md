@@ -408,13 +408,30 @@ featured image), then site defaults. A site-wide `noindex` overrides everything
 ### Blocks
 
 A page body is `BlockInstance[]` — `{ id, type, props }`. `lib/cms/blocks.ts`
-holds a registry mapping a block name to a component plus a Zod schema, so the
-admin can render an editor for a block it has never heard of.
+holds a registry mapping a block name to a Zod schema plus a `fields`
+descriptor, so the admin can render an editor for a block it has never heard
+of. `components/cms/block-editor.tsx` generates that form.
 
-Phase 1 ships exactly one block, `rich-text`, and no drag-and-drop builder.
-That is deliberate: the brief explicitly warns against building an editor before
-the CMS foundation works. The storage shape will not change when Phase 3 adds
-hero, gallery and tour-grid blocks.
+**The registry holds no React components.** It did in Phase 1, and that became
+wrong the moment the block editor existed: the editor is a Client Component, so
+a registry of components would pull every block's rendering — including the
+grids that query the database — into the browser bundle. Rendering lives in
+`components/frontend/blocks/index.tsx`, a plain name → component map used only
+on the server.
+
+The editor adds, reorders and removes blocks from a list. It is **not** a
+drag-and-drop canvas, and that is a decision rather than an omission: up/down
+buttons reorder reliably with a keyboard and on touch, and a builder that
+competes with Elementor is what this project refuses to become.
+
+The storage shape did not change when Phase 3 landed. A page whose body was a
+single `rich-text` block in Phase 1 opens in the block editor as one Text
+block, untouched.
+
+Two ways a block fails soft, both deliberate: an unregistered type, and props
+that fail their schema. Either way the renderer skips the block and leaves its
+props on the record, so removing a block from the code cannot break a live page
+and re-adding it brings the content back.
 
 `components/frontend/rich-text.tsx` renders a small Markdown subset into React
 elements rather than HTML — no parser dependency, no sanitiser, and no way for
@@ -451,7 +468,7 @@ immediately without every visitor request hitting the database.
 | Add a page/route | Write ordinary Next.js. Optionally declare it in `config/routes.ts`. |
 | Query the CMS | `import { cms } from "@/lib/cms"` in a Server Component. |
 | Use Supabase/Mongo directly | Do it. The CMS does not own your data access. |
-| Add a block | `registerBlock({ name, label, schema, component })`. |
+| Add a block | `registerBlock({ name, label, schema, fields })`, then add it to `BLOCK_COMPONENTS`. |
 | Change the admin sidebar | Edit `config/admin-nav.ts` (data, not markup). |
 | Switch off a module | `modules: { blog: false }` in `cms.config.ts`. |
 | Change the database | `database: "supabase"` in `cms.config.ts`, or `CMS_DATABASE` in the env. |

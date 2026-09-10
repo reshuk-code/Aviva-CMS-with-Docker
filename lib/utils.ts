@@ -78,3 +78,15 @@ export function toDateTimeLocal(value: string | null): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+
+/**
+ * "1 day" / "3 days". Trivial, but every listing page needs it and getting it
+ * wrong shows up as "1 Days" on a customer-facing price card.
+ */
+export function pluralise(
+  count: number,
+  singular: string,
+  plural = `${singular}s`,
+): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}

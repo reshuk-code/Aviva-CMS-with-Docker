@@ -38,10 +38,21 @@
   --success: oklch(0.6 0.13 155);
   --warning: oklch(0.72 0.14 75);
 
-  --sidebar: oklch(0.985 0.003 250);
+  --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.32 0.02 260);
 
+  /*
+   * The page ground the admin's cards float on. Cooler and a shade darker than
+   * --background so a white card reads as raised without needing a border.
+   * --background stays near-white for the public site.
+   */
+  --surface: oklch(0.963 0.007 250);
+
   --radius: 0.55rem;
+  /* Cards are rounder than controls: the shell reads soft, inputs stay crisp. */
+  --radius-card: 1.125rem;
+  --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04),
+    0 12px 30px -16px oklch(0.21 0.02 260 / 0.18);
 }
 
 .dark {
@@ -73,8 +84,12 @@
   --success: oklch(0.68 0.13 155);
   --warning: oklch(0.78 0.13 75);
 
-  --sidebar: oklch(0.2 0.013 260);
+  --sidebar: oklch(0.22 0.014 260);
   --sidebar-foreground: oklch(0.87 0.008 255);
+
+  /* Darker than --card, so the same cards read as raised here too. */
+  --surface: oklch(0.15 0.012 260);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.4);
 }
 
 @theme inline {
@@ -98,6 +113,7 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
@@ -106,6 +122,7 @@
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
+  --radius-card: var(--radius-card);
 }
 
 @layer base {
@@ -139,5 +156,30 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border-width: 0;
+  }
+}
+
+/*
+ * A scrollbar that does not shout. The admin sidebar overflows on a short
+ * viewport by design — a full-width grey track next to the navigation reads as
+ * a rendering fault rather than as "there is more below".
+ */
+@layer components {
+  .cms-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .cms-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .cms-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .cms-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 999px;
   }
 }

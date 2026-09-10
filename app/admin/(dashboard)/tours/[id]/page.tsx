@@ -5,6 +5,7 @@ import { TourForm } from "@/components/cms/tour-form";
 import { StatusBadge } from "@/components/ui/badge";
 import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
+import { activities } from "@/lib/cms/repositories/activities";
 import { destinations } from "@/lib/cms/repositories/destinations";
 import { settings } from "@/lib/cms/repositories/settings";
 import { tours } from "@/lib/cms/repositories/tours";
@@ -20,9 +21,10 @@ export default async function EditTourPage({
   const session = await requirePermission("tours.update");
   const { id } = await params;
 
-  const [tour, destinationOptions, siteUrl] = await Promise.all([
+  const [tour, destinationOptions, activityOptions, siteUrl] = await Promise.all([
     tours.get(id),
     destinations.options(),
+    activities.options(),
     settings.siteUrl(),
   ]);
 
@@ -43,6 +45,10 @@ export default async function EditTourPage({
       <TourForm
         tour={tour}
         destinationOptions={destinationOptions.map(({ id: optionId, name }) => ({
+          id: optionId,
+          name,
+        }))}
+        activityOptions={activityOptions.map(({ id: optionId, name }) => ({
           id: optionId,
           name,
         }))}

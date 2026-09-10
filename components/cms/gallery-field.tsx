@@ -20,20 +20,36 @@ export function GalleryField({
   label = "Gallery",
   hint,
   defaultValue = [],
+  onValueChange,
 }: {
   name: string;
   label?: string;
   hint?: string;
   defaultValue?: string[];
+  /** Mirrors the list out. See the note on ImageField's onValueChange. */
+  onValueChange?: (urls: string[]) => void;
 }) {
   const [urls, setUrls] = useState<string[]>(defaultValue);
+
+  /**
+   * Resolves the next list, then sets state and notifies the parent.
+   *
+   * Deliberately not `setUrls(current => …)`: React may invoke an updater more
+   * than once, so calling the parent's onValueChange from inside one would fire
+   * a second component's setState an unpredictable number of times.
+   */
+  function update(next: string[] | ((current: string[]) => string[])) {
+    const resolved = typeof next === "function" ? next(urls) : next;
+    setUrls(resolved);
+    onValueChange?.(resolved);
+  }
   const [picking, setPicking] = useState(false);
 
   function move(index: number, delta: number) {
     const target = index + delta;
     if (target < 0 || target >= urls.length) return;
 
-    setUrls((current) => {
+    update((current) => {
       const next = [...current];
       [next[index], next[target]] = [next[target], next[index]];
       return next;
@@ -75,7 +91,7 @@ export function GalleryField({
                 <button
                   type="button"
                   onClick={() =>
-                    setUrls((current) => current.filter((_, i) => i !== index))
+                    update((current) => current.filter((_, i) => i !== index))
                   }
                   className="rounded p-0.5 text-destructive hover:opacity-80"
                   aria-label={`Remove image ${index + 1}`}
@@ -116,7 +132,7 @@ export function GalleryField({
         onSelect={(item) =>
           // Adding the same file twice would render a duplicate and confuse the
           // move buttons, which key on the URL.
-          setUrls((current) =>
+          update((current) =>
             current.includes(item.url) ? current : [...current, item.url],
           )
         }

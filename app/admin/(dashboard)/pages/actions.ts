@@ -14,7 +14,6 @@ import {
 import { requirePermission } from "@/lib/auth";
 import { activity } from "@/lib/cms/repositories/activity";
 import { pages } from "@/lib/cms/repositories/pages";
-import { RICH_TEXT_BLOCK } from "@/lib/cms/blocks";
 import { pageInputWithRulesSchema } from "@/schemas/page";
 import type { ContentStatus } from "@/types/common";
 
@@ -35,18 +34,23 @@ function parseFormData(formData: FormData) {
     if (trimmed) meta[trimmed] = metaValues[index] ?? "";
   });
 
-  const content = formString(formData.get("content"));
-  const blockId = formString(formData.get("blockId")) || crypto.randomUUID();
+  // The block editor posts the whole body as one JSON field. Anything that is
+  // not a parseable array is treated as an empty body rather than throwing:
+  // the Zod schema below is what decides whether the contents are acceptable,
+  // and it reports per-block errors the form can show.
+  let body: unknown = [];
+  try {
+    const parsed: unknown = JSON.parse(formString(formData.get("body")) || "[]");
+    if (Array.isArray(parsed)) body = parsed;
+  } catch {
+    body = [];
+  }
 
   return {
     title: formString(formData.get("title")),
     slug: formString(formData.get("slug")) || formString(formData.get("title")),
     excerpt: formString(formData.get("excerpt")),
-    // Phase 1 stores the body as a single rich-text block. Phase 3 replaces
-    // this with the full block editor; the storage shape does not change.
-    body: content.trim()
-      ? [{ id: blockId, type: RICH_TEXT_BLOCK, props: { content } }]
-      : [],
+    body,
     featuredImage: formString(formData.get("featuredImage")),
     parentId: formString(formData.get("parentId")) || null,
     order: formString(formData.get("order")) || "0",

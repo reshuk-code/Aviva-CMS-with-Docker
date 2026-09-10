@@ -2,11 +2,19 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * A raised card.
+ *
+ * Depth comes from a shadow rather than a border, which is what makes the
+ * admin read as panels floating on `--surface`. Dark mode keeps a hairline as
+ * well: a shadow alone is invisible against a dark ground.
+ */
 export function Card({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        "rounded-card bg-card text-card-foreground shadow-[var(--shadow-card)]",
+        "dark:border dark:border-border",
         className,
       )}
       {...props}

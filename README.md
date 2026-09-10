@@ -63,6 +63,10 @@ config/routes.ts         Routes you hand-built, declared for the admin.
 | Blog | Posts with an author byline, one category, free tags, reading time. |
 | Destinations | Places with coordinates, best season, highlights and a gallery. |
 | Tour packages | Price, length, difficulty, inclusions, FAQs and a day-by-day itinerary. |
+| Activities | What travellers do, tagged onto tour packages. |
+| Testimonials | Quotes with a rating and attribution. No page of their own. |
+| FAQs | Questions and answers, grouped by category. |
+| Enquiries | The inbox behind the contact and booking forms, with triage and internal notes. |
 | Media | Upload with drag and drop, folders, alt text, search, picker. |
 | Navigation | Menus with nesting, resolved to hrefs for the frontend. |
 | SEO | Per-entity and site-wide, with a search-result preview and an audit of pages missing metadata. |
@@ -72,9 +76,9 @@ config/routes.ts         Routes you hand-built, declared for the admin.
 | Database & Connections | What backend is in use, and what `.env.local` actually provided. |
 | Developer | An inventory of every route, and who owns it. |
 
-Screens that are not built yet — activities, testimonials, FAQs, enquiries —
-appear greyed out with a "Soon" tag rather than as links that 404.
-See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Screens that are not built yet — the header and footer editors, integrations,
+bookings and customers — appear greyed out with a "Soon" tag rather than as
+links that 404. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 **For the developer:** a typed SDK, five swappable database adapters, three
 storage providers, four authentication providers, server-enforced permissions,
@@ -155,9 +159,10 @@ things:
 
 ## Status
 
-Phase 1 (foundation, pages, SEO, navigation, settings, users) is complete, as
-are the Phase 2 media library, blog, destinations and tour packages.
-Activities, testimonials, FAQs and enquiries are the rest of Phase 2.
+Phase 1 (foundation, pages, SEO, navigation, settings, users) is complete, and
+so is Phase 2's content half: the media library, blog, destinations, tour
+packages, activities, testimonials, FAQs and enquiries. What remains in Phase 2
+is entity links in the menu editor.
 
 There is no test suite yet. The first tests worth writing are listed in the
 roadmap.

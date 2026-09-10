@@ -26,9 +26,14 @@ TypeScript strict, Tailwind v4, Radix primitives, Zod v4, no ORM.
 ## Before you finish any task
 
 ```bash
-npm run check    # typecheck + lint. Must be clean. Not optional.
+npm run check    # typecheck + lint + route scan. Must be clean. Not optional.
 npm run build    # catches server/client boundary mistakes that check misses.
 ```
+
+`check` ends with `cms:routes`, which lists any route under `app/` that is not
+declared in `config/routes.ts`. It exits 0 either way — declaring a route is
+optional — but read the output. An undeclared route is invisible in the admin
+route inventory, so the client sees a URL nobody appears to own.
 
 Then **verify the change in the running app**, not just in the type system. A
 dev server usually runs on :3000. Most bugs in this codebase were found by

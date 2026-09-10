@@ -24,7 +24,7 @@ import {
   Textarea,
 } from "@/components/ui/field";
 import { IDLE } from "@/lib/actions/result";
-import { RICH_TEXT_BLOCK } from "@/lib/cms/blocks";
+import { BlockEditor } from "@/components/cms/block-editor";
 import { normaliseSlug } from "@/schemas/common";
 import { toDateTimeLocal } from "@/lib/utils";
 import type { CmsPage } from "@/types/page";
@@ -66,9 +66,6 @@ export function PageForm({
 
   const errors = state.fieldErrors ?? {};
 
-  const bodyBlock = page?.body.find((block) => block.type === RICH_TEXT_BLOCK);
-  const initialContent =
-    typeof bodyBlock?.props.content === "string" ? bodyBlock.props.content : "";
 
 
 
@@ -96,9 +93,6 @@ export function PageForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {page ? <input type="hidden" name="id" value={page.id} /> : null}
-      {bodyBlock ? (
-        <input type="hidden" name="blockId" value={bodyBlock.id} />
-      ) : null}
 
       {state.message && !state.ok ? (
         <p
@@ -183,20 +177,10 @@ export function PageForm({
           <Card>
             <CardHeader
               title="Content"
-              description="Markdown-lite: # headings, - lists, **bold**, *italic*, [links](/url)."
+              description="Build the page from blocks. The order here is the order on the page."
             />
             <CardBody>
-              <label htmlFor="content" className="sr-only">
-                Page content
-              </label>
-              <Textarea
-                id="content"
-                name="content"
-                defaultValue={initialContent}
-                rows={16}
-                className="font-mono text-xs leading-relaxed"
-                placeholder={"## Who we are\n\nWe are a Kathmandu-based trekking operator…"}
-              />
+              <BlockEditor name="body" defaultValue={page?.body ?? []} />
             </CardBody>
           </Card>
 

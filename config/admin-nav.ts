@@ -118,7 +118,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Footprints,
         module: "activities",
         permission: "activities.read",
-        status: "planned",
         matchPrefix: true,
       },
       {
@@ -127,7 +126,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Quote,
         module: "testimonials",
         permission: "testimonials.read",
-        status: "planned",
         matchPrefix: true,
       },
       {
@@ -136,7 +134,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: MessageSquareQuote,
         module: "faqs",
         permission: "faqs.read",
-        status: "planned",
         matchPrefix: true,
       },
     ],
@@ -201,7 +198,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Inbox,
         module: "enquiries",
         permission: "enquiries.read",
-        status: "planned",
         matchPrefix: true,
       },
       {

@@ -65,15 +65,34 @@ these items are the repositories, admin screens and SDK namespaces.
       meals, altitude, walking time and per-day photographs. Days are
       renumbered 1..n on save, and the schema rejects an itinerary whose length
       contradicts the headline duration.
-- [ ] **Activities**, **Testimonials**, **FAQs**.
-- [ ] **Enquiries** — inbox for the contact/booking form.
+- [x] **Activities** — name, slug, description, icon token, featured image and
+      display order, with the same draft/schedule/trash lifecycle as pages.
+      `/admin/activities`, `cms.activities`. The tour editor now has a real
+      activity picker.
+- [x] **Testimonials** — quote, 1-5 rating, attribution (name, role, company,
+      country), optional photograph and tour reference, featured flag.
+      `/admin/testimonials`, `cms.testimonials`.
+- [x] **FAQs** — question, answer, free-text category and order, grouped for
+      rendering by `cms.faqs.getGrouped()`. `/admin/faqs`, `cms.faqs`.
+- [x] **Enquiries** — inbox for the contact/booking form. Triage states,
+      internal notes, resolved subject. `/admin/enquiries`, `cms.enquiries`.
 - [ ] Entity links in the menu editor (`target: "entity"`, stubbed today).
-- [ ] SDK namespaces: `cms.testimonials`, `cms.faqs`, `cms.enquiries`.
-      (`cms.media`, `cms.posts`, `cms.destinations` and `cms.tours` are done.)
 
-**A tour's `activityIds` is stored but has no picker yet** — there is nothing
-to choose from until the activities module lands. Existing values round-trip
-untouched.
+**Testimonials and FAQs carry no slug and no SEO block**, unlike every other
+published type. Neither is a page: both are rendered inside somebody else's
+page, and giving them URLs would produce thin duplicate content.
+
+**An enquiry is a record, not content.** It extends `BaseRecord`, never
+publishes, and has no public read — `cms.enquiries` must not be surfaced from
+a page. `create()` accepts only the traveller's own fields, so a crafted form
+post cannot file itself as "converted" or write the operator's notes; the
+admin triages an enquiry but never edits what was sent.
+
+**Activity ids on a tour survive an activity being hidden.** Ids the picker
+cannot show — the activity is in the trash, or the module is switched off for
+that client — are posted back as hidden inputs, so saving a tour does not
+silently strip tags. Deleting an activity still leaves a dangling id by
+design; nothing rewrites tours, and the delete dialog says so.
 
 **Categories and tags are strings on the post, not their own collections.**
 A travel blog has a dozen categories that change twice a year; two more tables
@@ -91,11 +110,20 @@ delete dialog says what it says.
 
 ## Phase 3 — Editing experience
 
-- [ ] **Block editor** — add, reorder and remove blocks on a page.
-- [ ] **Built-in blocks** — hero, image, gallery, video, CTA, features,
-      testimonials, FAQ, tour grid, destination grid, blog grid, contact form,
-      map, custom component.
-- [ ] **Block registration docs** for project-specific blocks.
+- [x] **Block editor** — add, reorder and remove blocks on a page.
+      `components/cms/block-editor.tsx`. A list with up/down buttons, not a
+      drag-and-drop canvas; the form for each block is generated from its
+      registered `fields`, so a project's own block gets an editor for free.
+- [x] **Built-in blocks** — text, hero, image, gallery, CTA, destination grid,
+      trip grid, activity grid, blog grid, testimonials, FAQ, contact form.
+      The grids read published content through the SDK at render time.
+- [x] **Block registration docs** — docs/BUILDING-A-SITE.md, "Step 6 — Blocks".
+
+**Not built as blocks, deliberately:** video (an embed is a `<script>` from a
+third party and needs a consent decision first), map (same, plus an API key),
+features (needs a repeating sub-form the generic field descriptor does not
+have), and custom-component (a block that renders arbitrary code is a way to
+put a deploy inside the CMS).
 - [ ] **Structured data** — automatic JSON-LD for tours (`Trip`/`Product`),
       destinations (`Place`) and posts (`Article`), on top of today's manual field.
 - [ ] **Revision history** with restore. The activity log records that a change

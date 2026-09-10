@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 import type { ContentStatus } from "@/types/common";
+import type { EnquiryStatus } from "@/types/content";
 
 const badgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
@@ -47,4 +48,34 @@ const STATUS_LABEL: Record<ContentStatus, string> = {
 
 export function StatusBadge({ status }: { status: ContentStatus }) {
   return <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>;
+}
+
+/**
+ * Triage state of an enquiry. A separate scale from the publication statuses
+ * above: "converted" is the good outcome here, and "spam" is the bad one,
+ * neither of which the content lifecycle has a word for.
+ */
+const ENQUIRY_TONE: Record<
+  EnquiryStatus,
+  VariantProps<typeof badgeVariants>["tone"]
+> = {
+  new: "info",
+  contacted: "neutral",
+  quoted: "warning",
+  converted: "success",
+  closed: "neutral",
+  spam: "danger",
+};
+
+const ENQUIRY_LABEL: Record<EnquiryStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  quoted: "Quoted",
+  converted: "Converted",
+  closed: "Closed",
+  spam: "Spam",
+};
+
+export function EnquiryStatusBadge({ status }: { status: EnquiryStatus }) {
+  return <Badge tone={ENQUIRY_TONE[status]}>{ENQUIRY_LABEL[status]}</Badge>;
 }

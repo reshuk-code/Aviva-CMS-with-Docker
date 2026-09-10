@@ -17,6 +17,9 @@ import type { WriteContext } from "./pages";
 
 const SEARCH_FIELDS = ["name", "slug", "shortDescription"];
 
+/** Ceiling for the activity-usage scan. See the note on `media.folders()`. */
+const ACTIVITY_SCAN_LIMIT = 2000;
+
 async function collection() {
   return (await getDatabase()).collection<TourPackage>("tours");
 }
@@ -138,6 +141,32 @@ export const tours = {
   async count(options?: TourListOptions): Promise<number> {
     const store = await collection();
     return store.count(buildListQuery(options, SEARCH_FIELDS));
+  },
+
+  /**
+   * How many tours tag each activity, keyed by activity id. Trash excluded.
+   *
+   * Counted here rather than through a `contains` filter because that operator
+   * means "the array includes this" in the local engine and "substring" once
+   * it becomes SQL, where an id would also match a longer id containing it.
+   * Scanning keeps the answer identical on every backend — and one scan
+   * answers a whole list screen, which a per-activity count would not.
+   */
+  async activityUsage(): Promise<Record<string, number>> {
+    const store = await collection();
+    const all = await store.findMany({
+      where: [{ field: "status", op: "ne", value: "trash" }],
+      limit: ACTIVITY_SCAN_LIMIT,
+    });
+
+    const usage: Record<string, number> = {};
+    for (const tour of all) {
+      for (const id of tour.activityIds ?? []) {
+        usage[id] = (usage[id] ?? 0) + 1;
+      }
+    }
+
+    return usage;
   },
 
   async create(input: TourInputParsed, ctx: WriteContext): Promise<TourPackage> {

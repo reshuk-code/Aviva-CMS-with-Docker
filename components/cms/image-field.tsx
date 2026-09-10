@@ -29,6 +29,7 @@ export function ImageField({
   error,
   defaultValue = "",
   placeholder,
+  onValueChange,
 }: {
   id: string;
   name: string;
@@ -37,8 +38,19 @@ export function ImageField({
   error?: string;
   defaultValue?: string;
   placeholder?: string;
+  /**
+   * Mirrors the value out for callers that manage their own state — the block
+   * editor keeps the whole page body in one JSON field, so the hidden input
+   * this component posts is ignored there.
+   */
+  onValueChange?: (value: string) => void;
 }) {
   const [value, setValue] = useState(defaultValue);
+
+  function update(next: string) {
+    setValue(next);
+    onValueChange?.(next);
+  }
   const [picking, setPicking] = useState(false);
 
   return (
@@ -51,7 +63,7 @@ export function ImageField({
                 {...props}
                 name={name}
                 value={value}
-                onChange={(event) => setValue(event.target.value)}
+                onChange={(event) => update(event.target.value)}
                 placeholder={placeholder}
               />
 
@@ -77,7 +89,7 @@ export function ImageField({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setValue("")}
+                  onClick={() => update("")}
                 >
                   <X className="size-4" />
                   Remove

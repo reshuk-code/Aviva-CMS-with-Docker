@@ -5,8 +5,9 @@ import { signOutAction } from "@/app/admin/auth-actions";
 import { AdminHeader } from "@/components/cms/admin-header";
 import { Sidebar } from "@/components/cms/sidebar";
 import { getSession } from "@/lib/auth";
-import { permissionsForRole } from "@/lib/auth/permissions";
-import { getCmsConfig, getEnabledModules } from "@/lib/cms/config";
+import { hasPermission, permissionsForRole } from "@/lib/auth/permissions";
+import { getCmsConfig, getEnabledModules, isModuleEnabled } from "@/lib/cms/config";
+import { enquiries } from "@/lib/cms/repositories/enquiries";
 import { users } from "@/lib/cms/repositories/users";
 
 /**
@@ -36,22 +37,41 @@ export default async function DashboardLayout({
     ...user.extraPermissions,
   ];
 
+  // The badge is a real count or it is absent. A user who cannot read the
+  // inbox is not told how full it is.
+  const showEnquiries =
+    isModuleEnabled("enquiries") &&
+    hasPermission({ role: user.role }, "enquiries.read");
+  const newEnquiries = showEnquiries ? await enquiries.countNew() : null;
+
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="min-h-dvh bg-surface">
       <Sidebar
         enabledModules={getEnabledModules()}
         grantedPermissions={granted}
         brandName={config.admin.brandName ?? config.siteName}
+        user={{ name: user.name, role: user.role }}
+        signOutAction={signOutAction}
+        newEnquiries={newEnquiries}
       />
 
-      <div className="lg:pl-64">
-        <AdminHeader
-          user={{ name: user.name, email: user.email, role: user.role }}
-          themeToggle={config.admin.themeToggle}
-          signOutAction={signOutAction}
-        />
+      <div className="lg:pl-[17.5rem]">
+        {/*
+          `pt-4` matters more than it looks: the header is `sticky top-4`, and a
+          sticky element only takes that offset once it starts sticking. With no
+          top padding it rested flush against the viewport while the sidebar sat
+          inset by 16px — the header read as jammed into the top edge.
+        */}
+        <div className="mx-auto max-w-[84rem] px-4 pb-4 pt-4">
+          <AdminHeader
+            user={{ name: user.name, email: user.email, role: user.role }}
+            themeToggle={config.admin.themeToggle}
+            signOutAction={signOutAction}
+            newEnquiries={newEnquiries}
+          />
 
-        <main className="mx-auto max-w-6xl px-4 py-6 lg:px-8">{children}</main>
+          <main>{children}</main>
+        </div>
       </div>
     </div>
   );

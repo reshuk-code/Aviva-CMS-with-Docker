@@ -21,6 +21,38 @@ does not touch a single frontend file.
 
 ---
 
+## Step 0 — Branch, do not fork the frontend out
+
+`main` is the reusable template. It must always build on a fresh clone, so
+nothing in `app/` is gitignored — a repository whose source is half-ignored is
+worse than one carrying a placeholder.
+
+Client work goes on its own branch:
+
+```bash
+git checkout -b client/<name>       # e.g. client/mission-himalaya
+```
+
+The next developer starting a different client branches from `main` again and
+gets a working, empty starting point.
+
+**What `main` carries, and why it is not client code:**
+
+| Path | Whose | Safe to delete on a client branch? |
+|---|---|---|
+| `app/(frontend)/layout.tsx` | yours | Replace, do not delete — the route group needs a layout |
+| `app/(frontend)/page.tsx` | yours | Yes, replace wholesale |
+| `app/(frontend)/contact/` | yours | Yes — it is a reference example |
+| `app/(frontend)/[...slug]/` | **the CMS** | **No.** This is the dynamic page renderer. Delete it and every page an editor creates 404s |
+
+Only the last row is CMS machinery. The rest is a placeholder that exists so
+the template runs before anyone has written a line of client markup.
+
+Do not "clean up" `main` by deleting the placeholder either: with no `page.tsx`
+the site has no `/` route, and with no `layout.tsx` the build fails.
+
+---
+
 ## Step 1 — Configure the project
 
 `cms.config.ts` is the file you edit when starting a client:
@@ -208,26 +240,74 @@ this template ships no native dependency.
 
 ---
 
-## Step 6 — Blocks (optional)
+## Step 6 — Blocks
 
-Page bodies are an array of blocks. Today there is one built-in, `rich-text`,
-rendered by `components/frontend/rich-text.tsx` with a deliberately small
-Markdown subset — headings, lists, bold, italic, links.
+A page body is an array of blocks, and the admin builds it with the block
+editor: add, reorder, remove. These ship built in:
 
-To add a project-specific block:
+| Block | Reads |
+|---|---|
+| Text | Markdown-lite prose |
+| Hero | its own props |
+| Image, Gallery | its own props |
+| Call to action | its own props |
+| Destination grid | `cms.destinations.getPublished()` |
+| Trip grid | `cms.tours.getPublished()` |
+| Activity grid | `cms.activities.getPublished()` |
+| Blog grid | `cms.posts.getPublished()` |
+| Testimonials | `cms.testimonials.getPublished()` |
+| FAQs | `cms.faqs.getPublished()` |
+| Contact form | files to `cms.enquiries.create()` |
+
+The grid blocks query at render time, so an editor who publishes a destination
+sees it appear in every Destination grid on the site.
+
+### Adding your own block
+
+Two steps, in two files, because the registry is data and the rendering is not.
+
+**1. Register the schema and its editor fields** — anywhere that runs on both
+server and client (`lib/cms/blocks.ts`, or your own module imported by it):
 
 ```ts
 registerBlock({
-  name: "tour-grid",
-  label: "Tour grid",
-  schema: z.object({ destinationId: z.string(), limit: z.number().default(6) }),
-  component: TourGrid,
+  name: "price-table",
+  label: "Price table",
+  description: "Shown in the block picker.",
+  schema: z.object({
+    heading: z.string().default(""),
+    currency: z.string().default("USD"),
+  }),
+  fields: [
+    { name: "heading", label: "Heading", kind: "text" },
+    { name: "currency", label: "Currency", kind: "text" },
+  ],
 });
 ```
 
-The full block editor — adding, reordering and removing blocks in the admin —
-is Phase 3. Until then a page body holds a single rich-text block, and the
-stored shape will not change when the editor arrives.
+`kind` is one of `text`, `textarea`, `number`, `boolean`, `image`, `gallery`,
+`select` (with `options`). That is all the admin needs — you do not write a
+form.
+
+**2. Render it** in `components/frontend/blocks/index.tsx`:
+
+```tsx
+export const BLOCK_COMPONENTS: Record<string, BlockComponent> = {
+  // …
+  "price-table": PriceTable,
+};
+```
+
+The component may be an async Server Component and query the SDK directly; the
+grids above do exactly that.
+
+**Do not put components in the registry.** `lib/cms/blocks.ts` is imported by
+the block editor, which runs in the browser — a component there would drag the
+CMS SDK and your database driver into the client bundle.
+
+A block whose type is not in the map, or whose props fail their schema, is
+skipped rather than crashing the page, and its props stay on the record. That
+is what makes it safe to remove a block from the code.
 
 ---
 
