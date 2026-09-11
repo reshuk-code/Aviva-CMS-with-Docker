@@ -97,8 +97,14 @@ function getDbFactory(credentials: ProviderCredentials) {
     const opened = (async () => {
       let MongoClient: new (uri: string) => MongoClientLike;
       try {
+        /* `as string` widens the specifier so TypeScript stops resolving it at
+         * build time. `mongodb` is an optional driver: on a clean install it is
+         * absent and a bare literal fails the build with TS2307 — which only
+         * shows up in CI, because a stray `mongodb` anywhere up the directory
+         * tree makes it resolve on a dev machine. The cast erases, so the
+         * emitted call still carries the literal for the bundler. */
         ({ MongoClient } = (await import(
-          /* webpackIgnore: true */ "mongodb"
+          /* webpackIgnore: true */ "mongodb" as string
         )) as unknown as { MongoClient: new (uri: string) => MongoClientLike });
       } catch {
         throw new AdapterNotConfiguredError(
