@@ -32,6 +32,7 @@ import type { BlockInstance } from "@/types/blocks";
 export type BlockFieldKind =
   | "text"
   | "textarea"
+  | "richtext"
   | "number"
   | "boolean"
   | "image"
@@ -123,14 +124,13 @@ export const RICH_TEXT_BLOCK = "rich-text";
 registerBlock({
   name: RICH_TEXT_BLOCK,
   label: "Text",
-  description: "Markdown-lite prose: headings, lists, bold, italic, links.",
+  description: "Formatted prose: headings, lists, quotes, links.",
   schema: richTextSchema,
   fields: [
     {
       name: "content",
       label: "Content",
-      kind: "textarea",
-      hint: "# headings, - lists, **bold**, *italic*, [links](/url).",
+      kind: "richtext",
     },
   ],
 });

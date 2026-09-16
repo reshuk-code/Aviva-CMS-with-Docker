@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { GalleryField } from "@/components/cms/gallery-field";
 import { ImageField } from "@/components/cms/image-field";
+import { RichTextField } from "@/components/cms/rich-text-field";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import {
@@ -253,6 +254,19 @@ function BlockFieldControl({
         label={field.label}
         hint={field.hint}
         defaultValue={Array.isArray(value) ? (value as string[]) : []}
+        onValueChange={onChange}
+      />
+    );
+  }
+
+  if (field.kind === "richtext") {
+    return (
+      <RichTextField
+        id={id}
+        name={`${id}-unused`}
+        label={field.label}
+        hint={field.hint}
+        defaultValue={typeof value === "string" ? value : ""}
         onValueChange={onChange}
       />
     );

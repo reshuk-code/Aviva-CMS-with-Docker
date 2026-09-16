@@ -7,6 +7,7 @@ import {
   optionalUrl,
 } from "./common";
 import { blockInstanceSchema } from "./page";
+import { richContentSchema } from "./rich-text";
 import { seoSchema } from "./seo";
 
 /** Comma-separated tags in, a de-duplicated array out. */
@@ -35,7 +36,7 @@ export const postInputSchema = z.object({
   title: z.string().trim().min(1, "Title is required.").max(200),
   slug: bareSlugSchema,
   excerpt: optionalText,
-  content: z.string().default(""),
+  content: richContentSchema,
   body: z.array(blockInstanceSchema).default([]),
   featuredImage: optionalUrl,
   authorId: z.string().trim().nullable().default(null),

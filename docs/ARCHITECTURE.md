@@ -433,9 +433,29 @@ that fail their schema. Either way the renderer skips the block and leaves its
 props on the record, so removing a block from the code cannot break a live page
 and re-adding it brings the content back.
 
-`components/frontend/rich-text.tsx` renders a small Markdown subset into React
-elements rather than HTML — no parser dependency, no sanitiser, and no way for
-editor-authored content to inject markup.
+`components/frontend/rich-text.tsx` renders the editor's document into React
+elements rather than HTML — no sanitiser, and no way for editor-authored
+content to inject markup. That is why the editor stores a ProseMirror document
+rather than the HTML a WYSIWYG would normally emit: HTML would have bought back
+the parser, the sanitiser and the XSS class all at once.
+
+Prose written before the rich editor landed is Markdown. `lib/rich-text.ts`
+converts it into the same document on read, so the renderer has exactly one
+path and no client's content had to be migrated.
+
+Images can be dropped or pasted into the editor, so there are now two ways to
+place a picture: the Image block for a standalone figure, and an inline image
+inside prose. That is a deliberate exception to "one way to do it" — an
+illustration belonging *within* a paragraph cannot be expressed as a sibling
+block.
+
+**An editor image is always uploaded, never embedded.** A pasted screenshot
+arrives as a base64 data URI; inlining one would put megabytes into a database
+row and break the size cap in `schemas/rich-text.ts`. Paste and drop upload
+through the media library and store only the resulting URL, the Image
+extension is configured with `allowBase64: false`, and `isSafeImageSrc`
+refuses `data:` on render. An image pasted as a remote address is copied into
+the library too, so a live page cannot break when someone else's site changes.
 
 ---
 

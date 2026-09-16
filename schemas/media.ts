@@ -7,8 +7,11 @@ import { optionalText } from "./common";
 /**
  * Media validation.
  *
- * The file itself is validated by the storage adapter (size, and the mime
- * types allowed below); these schemas cover the metadata a person types.
+ * The file itself is validated by the storage adapter, which enforces a size
+ * limit only: the library deliberately accepts documents, audio and video as
+ * well as images (see MEDIA_KINDS), so there is no type allowlist here. The
+ * editor's own upload path is the exception and accepts images alone.
+ * These schemas cover the metadata a person types.
  */
 export const mediaKindSchema = z.enum(MEDIA_KINDS);
 
@@ -18,6 +21,10 @@ export const mediaKindSchema = z.enum(MEDIA_KINDS);
  * A tree needs move/rename/merge semantics across two backends and a storage
  * provider, and clients asked for "somewhere to put the trek photos". One
  * level buys most of the tidiness for none of that cost.
+ *
+ * Not to be confused with the dated path in the storage key
+ * (`2026/09/13/…`, see `buildStorageKey`). That organises the bucket; this
+ * organises the library. A file has both, and they are set independently.
  */
 export const folderSchema = z
   .string()

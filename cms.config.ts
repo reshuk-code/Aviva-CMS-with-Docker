@@ -27,7 +27,10 @@ export default defineCmsConfig({
     tours: true,
     activities: true,
     testimonials: true,
-    faqs: true,
+    // Off for this client. The public /faqs route reads the SDK directly and
+    // is not module-gated, so switch that off in the frontend if it should go
+    // too.
+    faqs: false,
     navigation: true,
     seo: true,
     redirects: true,
@@ -38,7 +41,13 @@ export default defineCmsConfig({
     customers: false,
     users: true,
     roles: true,
-    integrations: true,
+    /*
+     * Retired rather than pending. The screen it pointed at would have held
+     * the analytics and verification IDs that Site Settings already edits, so
+     * the sidebar entry is gone; this keeps its row out of the permission
+     * matrix at /admin/roles, which lists one row per enabled module.
+     */
+    integrations: false,
     database: true,
     developer: true,
   },
@@ -46,6 +55,13 @@ export default defineCmsConfig({
   admin: {
     basePath: "/admin",
     brandName: "Aviva CMS",
+    /*
+     * The mark only, not the full lockup the brand also has. This sits in a
+     * 36px square beside the brand name, where a wordmark would be both
+     * illegible and a second copy of the words already next to it — and the
+     * lockup's wordmark is solid black, so it disappears in the dark theme.
+     */
+    logo: "/brand/logo-mark.png",
     themeToggle: true,
   },
 

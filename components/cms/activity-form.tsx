@@ -1,25 +1,28 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { saveActivityAction } from "@/app/admin/(dashboard)/activities/actions";
+import { FaqEditor } from "@/components/cms/faq-editor";
+import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
 import { ImageField } from "@/components/cms/image-field";
+import { MediaLibraryPanel } from "@/components/cms/media-drawer";
 import { SeoFields } from "@/components/cms/seo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Label, Select, Textarea } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { toDateTimeLocal } from "@/lib/utils";
 import { slugify } from "@/schemas/common";
 import type { Activity } from "@/types/content";
+
+const CONTENT_TABS = [
+  { id: "overview", label: "Overview", sectionIds: ["section-overview"] },
+  { id: "info", label: "Info", sectionIds: ["section-presentation"] },
+  { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
+];
 
 export interface ActivityFormProps {
   activity: Activity | null;
@@ -78,28 +81,19 @@ export function ActivityForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {activity ? <input type="hidden" name="id" value={activity.id} /> : null}
 
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
-      ) : null}
-
+      <FormSections sections={[]} tabs={CONTENT_TABS} revealAll={!state.ok && Boolean(state.fieldErrors)}>
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
-          <Card>
-            <CardBody className="space-y-5">
+          <ContentManagementPanel>
+
+          <FormSection id="section-overview" title="Activity overview" bodyClassName="space-y-5">
               <Field id="name" label="Name" error={errors.name?.[0]} required>
                 {(props) => (
                   <Input
@@ -123,7 +117,7 @@ export function ActivityForm({
                     Typically served at{" "}
                     <code className="rounded bg-muted px-1">
                       {siteUrl}
-                      {basePath}/{slug || "…"}
+                      {basePath}/{slug || "…"}/
                     </code>{" "}
                     — the exact route is your frontend&apos;s to decide.
                   </>
@@ -165,12 +159,9 @@ export function ActivityForm({
                   />
                 )}
               </Field>
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader title="Presentation" />
-            <CardBody className="space-y-5">
+          <FormSection id="section-presentation" title="Activity info" bodyClassName="space-y-5">
               <ImageField
                 id="featuredImage"
                 name="featuredImage"
@@ -205,8 +196,13 @@ export function ActivityForm({
                   </>
                 )}
               </Field>
-            </CardBody>
-          </Card>
+          </FormSection>
+
+          <FormSection id="section-faqs" title="Activity FAQs">
+            <FaqEditor defaultValue={activity?.faqs ?? []} />
+          </FormSection>
+
+          </ContentManagementPanel>
 
           <SeoFields
             seo={activity?.seo ?? null}
@@ -219,6 +215,8 @@ export function ActivityForm({
         </div>
 
         <div className="space-y-5">
+          <MediaLibraryPanel />
+
           <Card>
             <CardHeader title="Publishing" />
             <CardBody className="space-y-4">
@@ -323,6 +321,7 @@ export function ActivityForm({
           </Card>
         </div>
       </div>
+      </FormSections>
     </form>
   );
 }

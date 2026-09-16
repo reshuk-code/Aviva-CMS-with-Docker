@@ -11,6 +11,7 @@ import {
   toActionState,
   type ActionState,
 } from "@/lib/actions/result";
+import { parseFaqRows } from "@/lib/actions/faq-input";
 import { requirePermission } from "@/lib/auth";
 import { activities } from "@/lib/cms/repositories/activities";
 import { activity } from "@/lib/cms/repositories/activity";
@@ -26,6 +27,7 @@ function parseFormData(formData: FormData) {
     description: formString(formData.get("description")),
     icon: formString(formData.get("icon")),
     featuredImage: formString(formData.get("featuredImage")),
+    faqs: parseFaqRows(formData),
     order: formString(formData.get("order")) || "0",
     status: formString(formData.get("status")),
     publishedAt: formString(formData.get("publishedAt")) || null,

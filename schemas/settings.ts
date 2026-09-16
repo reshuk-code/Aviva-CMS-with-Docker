@@ -68,6 +68,91 @@ export const settingsInputSchema = z.object({
   maintenanceMode: z.coerce.boolean().default(false),
 });
 
+/**
+ * Header chrome.
+ *
+ * The announcement bar and the CTA are each two fields that only mean anything
+ * together, so `superRefine` rejects half of one rather than letting the
+ * frontend decide what a labelled link with no URL should do.
+ */
+export const headerInputSchema = z
+  .object({
+    announcement: z
+      .object({
+        enabled: z.coerce.boolean().default(false),
+        text: optionalText,
+        href: optionalUrl,
+        linkLabel: optionalText,
+      })
+      .prefault({}),
+    sticky: z.coerce.boolean().default(true),
+    showContact: z.coerce.boolean().default(false),
+    cta: z
+      .object({
+        label: optionalText,
+        href: optionalUrl,
+      })
+      .prefault({}),
+  })
+  .superRefine((value, ctx) => {
+    if (value.announcement.enabled && !value.announcement.text) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["announcement", "text"],
+        message: "Write the announcement, or switch the bar off.",
+      });
+    }
+
+    if (value.announcement.linkLabel && !value.announcement.href) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["announcement", "href"],
+        message: "A link label needs a link.",
+      });
+    }
+
+    if (value.cta.label && !value.cta.href) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cta", "href"],
+        message: "Give the button somewhere to go.",
+      });
+    }
+
+    if (value.cta.href && !value.cta.label) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cta", "label"],
+        message: "Give the button a label.",
+      });
+    }
+  });
+
+/**
+ * Footer chrome.
+ *
+ * A column names a menu rather than carrying links of its own; whether that
+ * menu still exists is checked when the footer renders, not here, because a
+ * menu deleted after this saved would otherwise lock the client out of their
+ * own footer screen.
+ */
+export const footerColumnSchema = z.object({
+  heading: z.string().trim().min(1, "Give the column a heading.").max(60),
+  menuKey: z.string().trim().min(1, "Choose a menu."),
+});
+
+export const footerInputSchema = z.object({
+  blurb: optionalText,
+  columns: z.array(footerColumnSchema).max(4, "Four columns is the most that fits.").default([]),
+  showSocial: z.coerce.boolean().default(true),
+  showContact: z.coerce.boolean().default(true),
+  copyright: optionalText,
+  legalNote: optionalText,
+});
+
+export type HeaderInput = z.input<typeof headerInputSchema>;
+export type FooterInput = z.input<typeof footerInputSchema>;
+
 export const redirectInputSchema = z
   .object({
     source: z

@@ -71,14 +71,15 @@ config/routes.ts         Routes you hand-built, declared for the admin.
 | Navigation | Menus with nesting, resolved to hrefs for the frontend. |
 | SEO | Per-entity and site-wide, with a search-result preview and an audit of pages missing metadata. |
 | Redirects | Exact-match, applied before a 404. |
+| Header & Footer | Announcement bar, header CTA, footer columns, social and small print. |
 | Site Settings | Identity, contact, social, analytics, maintenance mode. |
 | Users & Roles | CRUD, role assignment, password reset, a read-only permission matrix. |
 | Database & Connections | What backend is in use, and what `.env.local` actually provided. |
 | Developer | An inventory of every route, and who owns it. |
 
-Screens that are not built yet — the header and footer editors, integrations,
-bookings and customers — appear greyed out with a "Soon" tag rather than as
-links that 404. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Screens that are not built yet — bookings and customers — appear greyed out
+with a "Soon" tag rather than as links that 404. See
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 **For the developer:** a typed SDK, five swappable database adapters, three
 storage providers, four authentication providers, server-enforced permissions,

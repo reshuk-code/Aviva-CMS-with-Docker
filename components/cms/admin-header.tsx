@@ -2,7 +2,7 @@
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ExternalLink, Inbox, LogOut, Moon, Sun, UserRound } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/cms/theme";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
@@ -34,8 +34,14 @@ export function AdminHeader({
   const [pending, startTransition] = useTransition();
   const pathname = usePathname();
 
+  /*
+   * The header sits at z-30: a sticky element only wins against positioned
+   * siblings, and a dropdown or an editor toolbar inside a card was riding
+   * over it. Still below the sidebar and the media drawer at z-40, which are
+   * meant to cover it.
+   */
   return (
-    <header className="sticky top-4 z-20 mb-4 flex h-16 items-center gap-1.5 rounded-card bg-card px-4 shadow-[var(--shadow-card)] lg:px-5 dark:border dark:border-border">
+    <header className="sticky top-4 z-30 mb-4 flex h-16 items-center gap-1.5 rounded-card bg-card px-4 shadow-[var(--shadow-card)] lg:px-5 dark:border dark:border-border">
       <p className="ml-9 truncate text-[0.95rem] font-semibold tracking-tight lg:ml-0">
         {sectionTitle(pathname)}
       </p>
@@ -77,7 +83,7 @@ export function AdminHeader({
         <DropdownMenu.Trigger asChild>
           <button
             type="button"
-            className="flex h-11 items-center gap-2.5 rounded-[0.7rem] px-2 text-sm transition-colors hover:bg-muted"
+            className="flex h-11 items-center gap-2.5 rounded-md px-2 text-sm transition-colors hover:bg-muted"
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground">
               <UserRound className="size-4" />
@@ -139,13 +145,14 @@ export function AdminHeader({
  * declared shows nothing rather than a guessed title.
  */
 function sectionTitle(pathname: string): string {
-  if (pathname === "/admin") return "Dashboard";
+  const currentPath = pathname.replace(/\/+$/, "") || "/";
+  if (currentPath === "/admin") return "Dashboard";
 
   const match = ADMIN_NAV.flatMap((group) => group.items)
     .filter((item) => item.href !== "/admin")
     .filter(
       (item) =>
-        pathname === item.href || pathname.startsWith(`${item.href}/`),
+        currentPath === item.href || currentPath.startsWith(`${item.href}/`),
     )
     .sort((a, b) => b.href.length - a.href.length)[0];
 

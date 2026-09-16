@@ -56,6 +56,35 @@ export const enquiryUpdateSchema = z.object({
 
 export type EnquiryUpdateParsed = z.output<typeof enquiryUpdateSchema>;
 
+/**
+ * The query string that preselects what a visitor is enquiring about, e.g.
+ * /contact?tour=everest-base-camp.
+ *
+ * A URL anybody can edit, so it is parsed like any other untrusted input. A
+ * value that is not slug-shaped is rejected outright rather than looked up:
+ * the page falls back to a plain contact form, which is the honest response to
+ * a link somebody mangled.
+ */
+const prefillSlug = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(200)
+  .transform((value) => (value.length ? value : null))
+  .nullable()
+  .default(null)
+  .refine(
+    (value) => value === null || /^[a-z0-9-]+$/.test(value),
+    "Not a slug.",
+  );
+
+export const enquiryPrefillSchema = z.object({
+  tour: prefillSlug,
+  destination: prefillSlug,
+});
+
+export type EnquiryPrefill = z.output<typeof enquiryPrefillSchema>;
+
 /** Query-string parameters for the enquiries list. */
 export const enquiryFiltersSchema = z.object({
   status: z.union([enquiryStatusSchema, z.literal("any")]).default("any"),

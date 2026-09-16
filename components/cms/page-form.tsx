@@ -1,15 +1,8 @@
 "use client";
 
-import { AlertCircle, ExternalLink, Plus, Save, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { savePageAction } from "@/app/admin/(dashboard)/pages/actions";
 import { ImageField } from "@/components/cms/image-field";
@@ -23,6 +16,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { BlockEditor } from "@/components/cms/block-editor";
 import { normaliseSlug } from "@/schemas/common";
@@ -86,23 +80,12 @@ export function PageForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {page ? <input type="hidden" name="id" value={page.id} /> : null}
-
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
-      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
@@ -131,7 +114,7 @@ export function PageForm({
                     The page will be served at{" "}
                     <code className="rounded bg-muted px-1">
                       {siteUrl}
-                      {slug || "/…"}
+                      {slug === "/" ? "/" : `${(slug || "/…").replace(/\/+$/, "")}/`}
                     </code>
                   </>
                 }

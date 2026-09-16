@@ -1,21 +1,17 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { savePostAction } from "@/app/admin/(dashboard)/blog/actions";
 import { ImageField } from "@/components/cms/image-field";
+import { MediaLibraryPanel } from "@/components/cms/media-drawer";
+import { RichTextField } from "@/components/cms/rich-text-field";
 import { SeoFields } from "@/components/cms/seo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { RICH_TEXT_BLOCK } from "@/lib/cms/blocks";
 import { slugify } from "@/schemas/common";
@@ -63,6 +59,11 @@ export function PostForm({
   );
   const slug = slugOverride ?? (title ? slugify(title) : "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
+  // Mirrored out of the editors so the SEO panel grades what is on
+  // screen rather than what was last saved.
+  const [seoContent, setSeoContent] = useState(post?.content ?? "");
+  const [seoImage, setSeoImage] = useState(post?.featuredImage ?? "");
+
   const [status, setStatus] = useState(post?.status ?? "draft");
 
   const errors = state.fieldErrors ?? {};
@@ -92,25 +93,14 @@ export function PostForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {post ? <input type="hidden" name="id" value={post.id} /> : null}
       {bodyBlock ? (
         <input type="hidden" name="blockId" value={bodyBlock.id} />
-      ) : null}
-
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
@@ -140,7 +130,7 @@ export function PostForm({
                     Typically served at{" "}
                     <code className="rounded bg-muted px-1">
                       {siteUrl}
-                      {blogBasePath}/{slug || "…"}
+                      {blogBasePath}/{slug || "…"}/
                     </code>{" "}
                     — the exact route is your frontend&apos;s to decide.
                   </>
@@ -185,27 +175,18 @@ export function PostForm({
           </Card>
 
           <Card>
-            <CardHeader
-              title="Content"
-              description="Markdown-lite: # headings, - lists, **bold**, *italic*, [links](/url)."
-            />
+            <CardHeader title="Content" />
             <CardBody>
-              <label htmlFor="content" className="sr-only">
-                Post content
-              </label>
-              <Textarea
+              <RichTextField
                 id="content"
                 name="content"
+                label="Post content"
+                hideLabel
                 defaultValue={initialContent}
-                rows={18}
-                className="font-mono text-xs leading-relaxed"
-                placeholder={
-                  "## Day one: Besisahar to Bhulbhule\n\nThe jeep leaves at six…"
-                }
+                error={errors.content?.[0]}
+                hint="Reading time is calculated from these words when you save."
+                onValueChange={setSeoContent}
               />
-              <p className="mt-2 text-xs text-muted-foreground">
-                Reading time is calculated from these words when you save.
-              </p>
             </CardBody>
           </Card>
 
@@ -216,10 +197,14 @@ export function PostForm({
             slug={`${blogBasePath}/${slug}`}
             siteUrl={siteUrl}
             errors={errors}
+            content={seoContent}
+            featuredImage={seoImage || null}
           />
         </div>
 
         <div className="space-y-5">
+          <MediaLibraryPanel />
+
           <Card>
             <CardHeader title="Publishing" />
             <CardBody className="space-y-4">
@@ -366,6 +351,7 @@ export function PostForm({
                 hint="Pick from the media library, or paste a URL from anywhere."
                 defaultValue={post?.featuredImage ?? ""}
                 placeholder="/uploads/annapurna.jpg"
+                onValueChange={setSeoImage}
               />
             </CardBody>
           </Card>

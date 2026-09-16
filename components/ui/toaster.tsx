@@ -1,7 +1,8 @@
 "use client";
 
-import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
+
+import { useTheme } from "@/components/cms/theme";
 
 /** Toast host. Mounted once in the admin layout. */
 export function Toaster() {

@@ -1,6 +1,7 @@
 export * from "./common";
 export * from "./seo";
 export * from "./blocks";
+export * from "./rich-text";
 export * from "./page";
 export * from "./navigation";
 export * from "./settings";

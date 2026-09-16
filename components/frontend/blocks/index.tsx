@@ -154,7 +154,12 @@ function ImageBlock(props: Record<string, unknown>) {
     <figure className="mx-auto w-full max-w-3xl px-6 py-8">
       <div className="overflow-hidden rounded-card bg-muted shadow-[var(--shadow-card)] dark:border dark:border-border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt={text(props, "alt")} className="w-full object-cover" />
+        <img
+          src={url}
+          alt={text(props, "alt")}
+          data-lightbox
+          className="w-full object-cover"
+        />
       </div>
       {caption ? (
         <figcaption className="mt-3 text-center text-sm text-muted-foreground">
@@ -182,6 +187,7 @@ function GalleryBlock(props: Record<string, unknown>) {
               src={url}
               alt=""
               loading="lazy"
+              data-lightbox
               className="aspect-[4/3] w-full object-cover"
             />
           </li>

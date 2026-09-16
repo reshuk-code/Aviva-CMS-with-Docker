@@ -1,14 +1,7 @@
 "use client";
 
-import { AlertCircle, Save, Star } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save, Star } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { saveTestimonialAction } from "@/app/admin/(dashboard)/testimonials/actions";
 import { ImageField } from "@/components/cms/image-field";
@@ -22,6 +15,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { toDateTimeLocal } from "@/lib/utils";
 import type { Testimonial } from "@/types/content";
@@ -72,24 +66,13 @@ export function TestimonialForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {testimonial ? (
         <input type="hidden" name="id" value={testimonial.id} />
-      ) : null}
-
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">

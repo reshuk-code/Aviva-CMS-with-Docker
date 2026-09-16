@@ -13,8 +13,15 @@ import { IDLE } from "@/lib/actions/result";
 export interface EnquiryFormProps {
   /** Tours a visitor can enquire about. Optional — omit for a plain contact form. */
   tours?: { id: string; name: string }[];
-  /** Preselects a tour when the form is embedded on a tour page. */
+  /** Preselects a tour when the visitor arrived from a tour page. */
   defaultTourId?: string | null;
+  /**
+   * Context from a destination page. Used only while no tour is selected —
+   * picking a trip is the more specific answer to "what is this about?".
+   */
+  destination?: { id: string; name: string } | null;
+  /** An opening line the visitor can keep, edit or delete. */
+  defaultMessage?: string;
 }
 
 /**
@@ -29,11 +36,24 @@ export interface EnquiryFormProps {
  * is a function once the action resolves, which would wipe a visitor's message
  * the moment their email address failed validation. See CLAUDE.md, "Form rules".
  */
-export function EnquiryForm({ tours = [], defaultTourId = null }: EnquiryFormProps) {
+export function EnquiryForm({
+  tours = [],
+  defaultTourId = null,
+  destination = null,
+  defaultMessage = "",
+}: EnquiryFormProps) {
   const [state, formAction, pending] = useActionState(
     submitEnquiryAction,
     IDLE,
   );
+
+  /*
+   * Which trip the enquiry is about, held in state rather than read off the
+   * select at submit time: the hidden `subjectType` has to change with it, and
+   * a visitor who arrived from a destination page and then picked a trip must
+   * post the trip rather than both.
+   */
+  const [tourId, setTourId] = useState(defaultTourId ?? "");
 
   // Cleared on success so the form empties, but only then — a rejected submit
   // must keep every word the visitor typed.
@@ -48,6 +68,12 @@ export function EnquiryForm({ tours = [], defaultTourId = null }: EnquiryFormPro
   }
 
   const errors = state.fieldErrors ?? {};
+
+  const subject = tourId
+    ? { type: "tour", id: tourId }
+    : destination
+      ? { type: "destination", id: destination.id }
+      : null;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -134,18 +160,14 @@ export function EnquiryForm({ tours = [], defaultTourId = null }: EnquiryFormPro
 
       {tours.length > 0 ? (
         <Labelled label="Which trip?" error={errors.subjectId?.[0]}>
-          {/*
-            `subjectType` rides along as a hidden input so the inbox can resolve
-            the id back to a name. The admin handles an unknown or deleted
-            subject on its own — see resolveSubject() in the enquiry screen.
-          */}
-          <input type="hidden" name="subjectType" value="tour" />
           <select
-            name="subjectId"
-            defaultValue={defaultTourId ?? ""}
+            value={tourId}
+            onChange={(event) => setTourId(event.target.value)}
             className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
           >
-            <option value="">Not sure yet</option>
+            <option value="">
+              {destination ? `Not sure — anything in ${destination.name}` : "Not sure yet"}
+            </option>
             {tours.map((tour) => (
               <option key={tour.id} value={tour.id}>
                 {tour.name}
@@ -155,11 +177,34 @@ export function EnquiryForm({ tours = [], defaultTourId = null }: EnquiryFormPro
         </Labelled>
       ) : null}
 
+      {/*
+        What the enquiry is about, posted as a pair so the inbox can resolve the
+        id back to a name — see resolveSubject() in the admin enquiry screen,
+        which handles a subject that has since been deleted.
+
+        A chosen trip always wins over the destination the visitor arrived from:
+        both would be true, but only one of them is what they asked about. The
+        select above is deliberately unnamed so it cannot post a second
+        `subjectId` of its own.
+      */}
+      {subject ? (
+        <>
+          <input type="hidden" name="subjectType" value={subject.type} />
+          <input type="hidden" name="subjectId" value={subject.id} />
+        </>
+      ) : null}
+
       <Labelled label="Message" error={errors.message?.[0]} required>
         <textarea
           name="message"
           rows={6}
           required
+          /*
+            An opening line rather than the whole message: enough that arriving
+            from a trip page does not mean starting at a blank box, little
+            enough that the visitor still says what they actually want.
+          */
+          defaultValue={defaultMessage}
           className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm"
           placeholder="Tell us roughly what you have in mind — dates, group size, anything you are unsure about."
         />

@@ -11,6 +11,7 @@ import {
   toActionState,
   type ActionState,
 } from "@/lib/actions/result";
+import { parseFaqRows } from "@/lib/actions/faq-input";
 import { requirePermission } from "@/lib/auth";
 import { activity } from "@/lib/cms/repositories/activity";
 import { destinations } from "@/lib/cms/repositories/destinations";
@@ -37,6 +38,7 @@ function parseFormData(formData: FormData) {
     latitude: formString(formData.get("latitude")),
     longitude: formString(formData.get("longitude")),
     highlights: formData.getAll("highlights").map(String),
+    faqs: parseFaqRows(formData),
     bestSeason: formData.getAll("bestSeason").map(String),
     typicalDuration: formString(formData.get("typicalDuration")),
     featured: formBoolean(formData.get("featured")),

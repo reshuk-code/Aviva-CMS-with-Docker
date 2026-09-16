@@ -48,9 +48,17 @@
    */
   --surface: oklch(0.963 0.007 250);
 
-  --radius: 0.55rem;
+  /*
+   * The two colours of the company mark, sampled from the logo itself rather
+   * than matched by eye. They are brand constants, so unlike every token above
+   * they do NOT change in dark mode.
+   */
+  --brand-orange: #fe8a00;
+  --brand-blue: #166fed;
+
+  --radius: 0.2rem;
   /* Cards are rounder than controls: the shell reads soft, inputs stay crisp. */
-  --radius-card: 1.125rem;
+  --radius-card: 0.6rem;
   --shadow-card: 0 1px 2px oklch(0.21 0.02 260 / 0.04),
     0 12px 30px -16px oklch(0.21 0.02 260 / 0.18);
 }
@@ -182,4 +190,32 @@
     background-color: var(--border);
     border-radius: 999px;
   }
+
+  /*
+   * The rich text writing surface.
+   *
+   * These cannot be utilities on the React element: ProseMirror owns the DOM
+   * inside the editor, and the placeholder is a generated pseudo-element that
+   * reads an attribute Tiptap sets on the first empty paragraph.
+   */
+  .cms-editor .tiptap {
+    outline: none;
+  }
+
+  .cms-editor .tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
+/*
+ * Images the full-screen viewer can open. The attribute is the opt-in, applied
+ * in the renderers; see components/frontend/lightbox.tsx. Kept here rather
+ * than on each `<img>` so marking a new image stays a one-word change.
+ */
+[data-lightbox] {
+  cursor: zoom-in;
 }

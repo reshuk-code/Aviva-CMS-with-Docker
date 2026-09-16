@@ -10,6 +10,7 @@ import { navigation } from "./repositories/navigation";
 import { pages } from "./repositories/pages";
 import { posts } from "./repositories/posts";
 import { redirects } from "./repositories/redirects";
+import { regions } from "./repositories/regions";
 import { settings } from "./repositories/settings";
 import { testimonials } from "./repositories/testimonials";
 import { tours } from "./repositories/tours";
@@ -46,6 +47,7 @@ export const cms = {
   pages,
   posts,
   destinations,
+  regions,
   tours,
   activities,
   testimonials,

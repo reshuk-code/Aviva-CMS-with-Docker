@@ -1,23 +1,8 @@
 "use client";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
-import type { ReactNode } from "react";
-
 /**
- * Light/dark theming for the admin only.
- *
- * Scoped here rather than in the root layout so the CMS never imposes a theme
- * system on the developer's public site (§20).
+ * Kept as a re-export so the admin layout's import did not have to change when
+ * `next-themes` was replaced. The implementation lives in `./theme`, alongside
+ * the server-rendered script that applies the class before first paint.
  */
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
-      {children}
-    </NextThemesProvider>
-  );
-}
+export { ThemeProvider } from "@/components/cms/theme";

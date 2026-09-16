@@ -1,21 +1,18 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { saveTourAction } from "@/app/admin/(dashboard)/tours/actions";
 import { FaqEditor } from "@/components/cms/faq-editor";
+import { GroupPricingEditor } from "@/components/cms/group-pricing-editor";
+import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
 import { GalleryField } from "@/components/cms/gallery-field";
 import { ImageField } from "@/components/cms/image-field";
 import { ItineraryEditor } from "@/components/cms/itinerary-editor";
+import { MediaLibraryPanel } from "@/components/cms/media-drawer";
 import { RepeatableField } from "@/components/cms/repeatable-field";
+import { RichTextField } from "@/components/cms/rich-text-field";
 import { SeoFields } from "@/components/cms/seo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -26,6 +23,7 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { slugify } from "@/schemas/common";
 import { MONTHS } from "@/schemas/destination";
@@ -39,6 +37,33 @@ const DIFFICULTY_LABELS: Record<string, string> = {
   strenuous: "Strenuous",
   extreme: "Extreme",
 };
+
+/**
+ * The collapsible sections, in the order they appear.
+ *
+ * Module level rather than inline so the array keeps the same identity between
+ * renders: the jump list feeds it to an IntersectionObserver effect, and a new
+ * array each render would rebuild the observer on every keystroke.
+ */
+const SECTIONS = [
+  { id: "section-description", label: "Description" },
+  { id: "section-pricing", label: "Pricing" },
+  { id: "section-trip", label: "The trip" },
+  { id: "section-itinerary", label: "Itinerary" },
+  { id: "section-highlights", label: "Trip highlights" },
+  { id: "section-inclusions", label: "Inclusions" },
+  { id: "section-faqs", label: "FAQs" },
+  { id: "section-photographs", label: "Photographs" },
+  { id: "section-seo", label: "SEO" },
+];
+
+const CONTENT_TABS = [
+  { id: "facts", label: "Facts", sectionIds: ["section-pricing", "section-trip"] },
+  { id: "overview", label: "Overview", sectionIds: ["section-description", "section-itinerary"] },
+  { id: "highlights", label: "Highlights", sectionIds: ["section-highlights", "section-inclusions"] },
+  { id: "info", label: "Info", sectionIds: ["section-photographs"] },
+  { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
+];
 
 export interface TourFormProps {
   tour: TourPackage | null;
@@ -79,6 +104,14 @@ export function TourForm({
   const [shortDescription, setShortDescription] = useState(
     tour?.shortDescription ?? "",
   );
+  // Mirrored out of the editors so the SEO panel grades what is on
+  // screen rather than what was last saved.
+  // Controlled so the group rate table can label its prices as you type.
+  const [currency, setCurrency] = useState(tour?.currency ?? "USD");
+
+  const [seoContent, setSeoContent] = useState(tour?.description ?? "");
+  const [seoImage, setSeoImage] = useState(tour?.featuredImage ?? "");
+
   const [status, setStatus] = useState(tour?.status ?? "draft");
 
   const errors = state.fieldErrors ?? {};
@@ -101,24 +134,21 @@ export function TourForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {tour ? <input type="hidden" name="id" value={tour.id} /> : null}
 
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
-      ) : null}
-
+      <FormSections
+        sections={SECTIONS}
+        tabs={CONTENT_TABS}
+        // A rejected save opens everything: a collapsed section hides its own
+        // errors, and "fix the highlighted fields" with nothing visibly
+        // highlighted leaves the editor stuck.
+        revealAll={!state.ok && Boolean(state.fieldErrors)}
+      >
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
           <Card>
@@ -146,7 +176,7 @@ export function TourForm({
                     Typically served at{" "}
                     <code className="rounded bg-muted px-1">
                       {siteUrl}
-                      {basePath}/{slug || "…"}
+                      {basePath}/{slug || "…"}/
                     </code>{" "}
                     — the exact route is your frontend&apos;s to decide.
                   </>
@@ -190,34 +220,26 @@ export function TourForm({
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader
-              title="Description"
-              description="Markdown-lite: # headings, - lists, **bold**, *italic*, [links](/url)."
-            />
-            <CardBody>
-              <label htmlFor="description" className="sr-only">
-                Tour description
-              </label>
-              <Textarea
+          <ContentManagementPanel>
+
+          <FormSection id="section-description" title="Trip overview">
+              <RichTextField
                 id="description"
                 name="description"
+                label="Tour description"
+                hideLabel
                 defaultValue={tour?.description ?? ""}
-                rows={12}
-                className="font-mono text-xs leading-relaxed"
-                placeholder={
-                  "## The route\n\nFrom Lukla the trail follows the Dudh Koshi…"
-                }
+                error={errors.description?.[0]}
+                onValueChange={setSeoContent}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader
-              title="Pricing"
-              description="Display prices. This CMS never processes a payment."
-            />
-            <CardBody className="space-y-4">
+          <FormSection
+            id="section-pricing"
+            title="Pricing"
+            description="Display prices. This CMS never processes a payment."
+            bodyClassName="space-y-4"
+          >
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field id="price" label="Price" error={errors.price?.[0]}>
                   {(props) => (
@@ -257,7 +279,8 @@ export function TourForm({
                     <Input
                       {...props}
                       name="currency"
-                      defaultValue={tour?.currency ?? "USD"}
+                      value={currency}
+                      onChange={(event) => setCurrency(event.target.value)}
                       placeholder="USD"
                       maxLength={3}
                       className="uppercase"
@@ -281,15 +304,30 @@ export function TourForm({
                   />
                 )}
               </Field>
-            </CardBody>
-          </Card>
 
-          <Card>
-            <CardHeader
-              title="The trip"
-              description="What a customer compares before booking."
-            />
-            <CardBody className="space-y-5">
+              <div className="border-t border-border pt-4">
+                <p className="text-sm font-medium">Group rates</p>
+                <p className="mt-1 mb-3 text-xs text-muted-foreground">
+                  Per-person prices that fall as the party grows. Bands may not
+                  overlap; leave a gap and those party sizes pay the price
+                  above. Leave this empty for one price for everyone.
+                </p>
+
+                <GroupPricingEditor
+                  name="groupPricing"
+                  defaultValue={tour?.groupPricing ?? []}
+                  currency={currency.toUpperCase() || "USD"}
+                  errors={errors}
+                />
+              </div>
+          </FormSection>
+
+          <FormSection
+            id="section-trip"
+            title="The trip"
+            description="What a customer compares before booking."
+            bodyClassName="space-y-5"
+          >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   id="durationDays"
@@ -411,36 +449,36 @@ export function TourForm({
                 </div>
               </fieldset>
 
-              <RepeatableField
-                name="highlights"
-                label="Highlights"
-                placeholder="Kala Patthar at sunrise"
-                addLabel="Add highlight"
-                defaultValue={tour?.highlights ?? []}
-              />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader
-              title="Itinerary"
-              description="Day by day. Reorder with the arrows; days are renumbered when you save."
-            />
-            <CardBody>
+          <FormSection
+            id="section-itinerary"
+            title="Itinerary"
+            description="Day by day. Reorder with the arrows; days are renumbered when you save."
+          >
               <ItineraryEditor
                 name="itinerary"
                 defaultValue={tour?.itinerary ?? []}
                 errors={errors}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader
-              title="What is and is not included"
-              description="The two lists that prevent most pre-booking emails."
+          <FormSection id="section-highlights" title="Trip highlights">
+            <RepeatableField
+              name="highlights"
+              label="Highlights"
+              placeholder="Kala Patthar at sunrise"
+              addLabel="Add highlight"
+              defaultValue={tour?.highlights ?? []}
             />
-            <CardBody className="grid gap-6 sm:grid-cols-2">
+          </FormSection>
+
+          <FormSection
+            id="section-inclusions"
+            title="What is and is not included"
+            description="The two lists that prevent most pre-booking emails."
+            bodyClassName="grid gap-6 sm:grid-cols-2"
+          >
               <RepeatableField
                 name="inclusions"
                 label="Included"
@@ -456,19 +494,20 @@ export function TourForm({
                 addLabel="Add exclusion"
                 defaultValue={tour?.exclusions ?? []}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader title="Frequently asked questions" />
-            <CardBody>
+          <FormSection
+            id="section-faqs"
+            title="Frequently asked questions"
+          >
               <FaqEditor defaultValue={tour?.faqs ?? []} />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader title="Photographs" />
-            <CardBody className="space-y-5">
+          <FormSection
+            id="section-photographs"
+            title="Photographs"
+            bodyClassName="space-y-5"
+          >
               <ImageField
                 id="featuredImage"
                 name="featuredImage"
@@ -476,6 +515,7 @@ export function TourForm({
                 hint="Pick from the media library, or paste a URL from anywhere."
                 defaultValue={tour?.featuredImage ?? ""}
                 placeholder="/uploads/ebc-trek.jpg"
+                onValueChange={setSeoImage}
               />
 
               <GalleryField
@@ -483,20 +523,36 @@ export function TourForm({
                 hint="Shown in the order below. Use the arrows to reorder."
                 defaultValue={tour?.gallery ?? []}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
+
+          </ContentManagementPanel>
 
           <SeoFields
+            id="section-seo"
             seo={tour?.seo ?? null}
             fallbackTitle={name}
             fallbackDescription={shortDescription}
             slug={`${basePath}/${slug}`}
             siteUrl={siteUrl}
             errors={errors}
+            content={seoContent}
+            featuredImage={seoImage || null}
           />
         </div>
 
-        <div className="space-y-5">
+        {/*
+          The rail sticks as one unit so the Fast menu stays reachable after a
+          jump. Sticking only the menu was tried and was wrong: its siblings
+          scrolled up underneath it and swallowed the Publishing heading.
+
+          `self-start` is load bearing — a grid item stretches to the row height
+          by default, which leaves sticky nothing to stick to. The rail can
+          outgrow the viewport, so it scrolls itself, and `overscroll-contain`
+          stops that scroll chaining into the page.
+        */}
+        <div className="cms-scroll space-y-5 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+          <MediaLibraryPanel />
+
           <Card>
             <CardHeader title="Publishing" />
             <CardBody className="space-y-4">
@@ -653,6 +709,7 @@ export function TourForm({
           </Card>
         </div>
       </div>
+      </FormSections>
     </form>
   );
 }

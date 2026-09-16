@@ -11,6 +11,7 @@ import {
   toActionState,
   type ActionState,
 } from "@/lib/actions/result";
+import { parseFaqRows } from "@/lib/actions/faq-input";
 import { requirePermission } from "@/lib/auth";
 import { activity } from "@/lib/cms/repositories/activity";
 import { tours } from "@/lib/cms/repositories/tours";
@@ -20,10 +21,12 @@ import type { ContentStatus } from "@/types/common";
 /**
  * Tour package server actions.
  *
- * The itinerary is the one field that does not arrive as plain form inputs: a
- * day carries its own lists of meals, activities and images, which parallel
- * inputs cannot express without inventing an encoding. The editor posts JSON
- * instead, parsed here and validated by the schema like everything else.
+ * Two fields do not arrive as plain form inputs. An itinerary day carries its
+ * own lists of meals, activities and images, and a group rate is three related
+ * numbers per row; parallel inputs cannot express either without inventing an
+ * encoding, and `getAll()` loses which value belongs to which row as soon as a
+ * middle one is deleted. Both editors post JSON, parsed here and validated by
+ * the schema like everything else.
  */
 
 /** Parses a JSON array from a hidden field. Returns null if it is not one. */
@@ -39,21 +42,11 @@ function parseJsonArray(value: FormDataEntryValue | null): unknown[] | null {
   }
 }
 
-function parseFormData(formData: FormData, itinerary: unknown[]) {
-  // FAQs are flat, so they post as parallel inputs the way page metadata does.
-  const questions = formData.getAll("faqQuestion").map(String);
-  const answers = formData.getAll("faqAnswer").map(String);
-  const faqIds = formData.getAll("faqId").map(String);
-
-  const faqs = questions
-    .map((question, index) => ({
-      id: faqIds[index] || crypto.randomUUID(),
-      question: question.trim(),
-      answer: (answers[index] ?? "").trim(),
-    }))
-    // A row with only one half filled in is an abandoned edit, not content.
-    .filter((faq) => faq.question && faq.answer);
-
+function parseFormData(
+  formData: FormData,
+  itinerary: unknown[],
+  groupPricing: unknown[],
+) {
   return {
     name: formString(formData.get("name")),
     slug: formString(formData.get("slug")) || formString(formData.get("name")),
@@ -78,10 +71,11 @@ function parseFormData(formData: FormData, itinerary: unknown[]) {
     activityIds: formData.getAll("activityIds").map(String),
 
     itinerary,
+    groupPricing,
     inclusions: formData.getAll("inclusions").map(String),
     exclusions: formData.getAll("exclusions").map(String),
     highlights: formData.getAll("highlights").map(String),
-    faqs,
+    faqs: parseFaqRows(formData),
     bestSeason: formData.getAll("bestSeason").map(String),
 
     featured: formBoolean(formData.get("featured")),
@@ -125,8 +119,15 @@ export async function saveTourAction(
       });
     }
 
+    const groupPricing = parseJsonArray(formData.get("groupPricing"));
+    if (groupPricing === null) {
+      return actionError("The group rates could not be read. Please try again.", {
+        groupPricing: ["The group rates could not be read. Please try again."],
+      });
+    }
+
     const parsed = tourInputWithRulesSchema.safeParse(
-      parseFormData(formData, itinerary),
+      parseFormData(formData, itinerary, groupPricing),
     );
     if (!parsed.success) return toActionState(parsed.error);
 

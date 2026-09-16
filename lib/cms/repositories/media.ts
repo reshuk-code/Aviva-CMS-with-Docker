@@ -11,6 +11,48 @@ const SEARCH_FIELDS = ["filename", "altText", "caption", "description"];
 /** Ceiling for the folder scan. Well past what a brochure site accumulates. */
 const FOLDER_SCAN_LIMIT = 2000;
 
+/**
+ * A readable caption guessed from the file name.
+ *
+ * Uploaders rarely fill the alt text box, and an image with no alt text is
+ * invisible to a screen reader and worth nothing in search. A name like
+ * `ama-dablam-sunrise.jpg` already describes the picture, so it is a better
+ * default than nothing — and it is only a default: the editor overwrites it
+ * from the media library and nothing here touches it again.
+ *
+ * Not applied blindly. A name that carries no words a person would read —
+ * `DSC_0042`, `IMG-20260913-WA0001`, a bare hash — produces worse alt text
+ * than an empty field, because a screen reader would announce it aloud.
+ */
+export function altTextFromFilename(filename: string): string | null {
+  const stem = filename.replace(/\.[^.]+$/, "");
+
+  const words = stem
+    .replace(/[_-]+/g, " ")
+    // Split camelCase and runs like "AmaDablam" into separate words.
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter(Boolean)
+    // Camera and messenger names are digits, or a prefix plus digits. Neither
+    // is worth reading out.
+    .filter((word) => /[a-z]/i.test(word) && !/^(img|dsc|dscn|pxl|photo|image|screenshot|untitled|wa)$/i.test(word))
+    .filter((word) => !/^\d+$/.test(word))
+    // A short prefix glued to a number is a camera or messenger name:
+    // WA0001, PXL20260913, DSC0042.
+    .filter((word) => !/^[a-z]{1,4}\d{2,}$/i.test(word));
+
+  if (words.length === 0) return null;
+
+  // A single long run with no vowel pattern is a hash or an id, not language.
+  if (words.every((word) => word.length > 20)) return null;
+
+  const text = words.join(" ").toLowerCase().trim();
+  if (text.length < 3) return null;
+
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 async function collection() {
   return (await getDatabase()).collection<MediaItem>("media");
 }
@@ -155,7 +197,9 @@ export const media = {
         size: stored.size,
         width: null,
         height: null,
-        altText: input.altText ?? null,
+        // Falls back to the file name so nothing lands in the library with no
+        // alt text at all. See `altTextFromFilename`.
+        altText: input.altText?.trim() || altTextFromFilename(filename),
         caption: null,
         description: null,
         folder: input.folder ?? null,

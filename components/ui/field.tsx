@@ -88,7 +88,9 @@ export function Field({
       })}
 
       {error ? (
-        <p id={errorId} className="text-xs text-destructive">
+        // `data-field-error` is how `useFormFeedback` finds the first problem
+        // on a rejected save when the control itself is not focusable.
+        <p id={errorId} data-field-error className="text-xs text-destructive">
           {error}
         </p>
       ) : null}

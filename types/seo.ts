@@ -4,6 +4,13 @@ export type RobotsDirective = "index" | "noindex";
 export type TwitterCardType = "summary" | "summary_large_image";
 
 export interface SeoMeta {
+  /**
+   * The phrase this page is meant to rank for.
+   *
+   * Editorial intent, not output: nothing renders it. It exists so the admin
+   * can grade the page against something, the way Rank Math and Yoast do.
+   */
+  focusKeyword: string | null;
   title: string | null;
   description: string | null;
   canonical: string | null;
@@ -20,6 +27,7 @@ export interface SeoMeta {
 }
 
 export const EMPTY_SEO: SeoMeta = {
+  focusKeyword: null,
   title: null,
   description: null,
   canonical: null,

@@ -1,19 +1,16 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { saveDestinationAction } from "@/app/admin/(dashboard)/destinations/actions";
+import { FaqEditor } from "@/components/cms/faq-editor";
+import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
 import { GalleryField } from "@/components/cms/gallery-field";
 import { ImageField } from "@/components/cms/image-field";
+import { MediaLibraryPanel } from "@/components/cms/media-drawer";
 import { RepeatableField } from "@/components/cms/repeatable-field";
+import { RichTextField } from "@/components/cms/rich-text-field";
 import { SeoFields } from "@/components/cms/seo-fields";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -25,11 +22,35 @@ import {
   Select,
   Textarea,
 } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { toDateTimeLocal } from "@/lib/utils";
 import { MONTHS } from "@/schemas/destination";
 import { slugify } from "@/schemas/common";
 import type { Destination } from "@/types/content";
+
+/**
+ * The collapsible sections, in the order they appear.
+ *
+ * Module level so the array keeps its identity between renders: the jump list
+ * feeds it to an IntersectionObserver effect.
+ */
+const SECTIONS = [
+  { id: "section-description", label: "Description" },
+  { id: "section-facts", label: "Facts" },
+  { id: "section-highlights", label: "Highlights" },
+  { id: "section-photographs", label: "Photographs" },
+  { id: "section-faqs", label: "FAQs" },
+  { id: "section-seo", label: "SEO" },
+];
+
+const CONTENT_TABS = [
+  { id: "facts", label: "Facts", sectionIds: ["section-facts"] },
+  { id: "overview", label: "Overview", sectionIds: ["section-description"] },
+  { id: "highlights", label: "Highlights", sectionIds: ["section-highlights"] },
+  { id: "info", label: "Info", sectionIds: ["section-photographs"] },
+  { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
+];
 
 export interface DestinationFormProps {
   destination: Destination | null;
@@ -70,6 +91,11 @@ export function DestinationForm({
   const [shortDescription, setShortDescription] = useState(
     destination?.shortDescription ?? "",
   );
+  // Mirrored out of the editors so the SEO panel grades what is on
+  // screen rather than what was last saved.
+  const [seoContent, setSeoContent] = useState(destination?.description ?? "");
+  const [seoImage, setSeoImage] = useState(destination?.featuredImage ?? "");
+
   const [status, setStatus] = useState(destination?.status ?? "draft");
 
   const errors = state.fieldErrors ?? {};
@@ -99,26 +125,23 @@ export function DestinationForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {destination ? (
         <input type="hidden" name="id" value={destination.id} />
       ) : null}
 
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
-      ) : null}
-
+      <FormSections
+        sections={SECTIONS}
+        tabs={CONTENT_TABS}
+        // A rejected save opens everything: a collapsed section hides its own
+        // errors, and "fix the highlighted fields" with nothing visibly
+        // highlighted leaves the editor stuck.
+        revealAll={!state.ok && Boolean(state.fieldErrors)}
+      >
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
           <Card>
@@ -146,7 +169,7 @@ export function DestinationForm({
                     Typically served at{" "}
                     <code className="rounded bg-muted px-1">
                       {siteUrl}
-                      {basePath}/{slug || "…"}
+                      {basePath}/{slug || "…"}/
                     </code>{" "}
                     — the exact route is your frontend&apos;s to decide.
                   </>
@@ -190,34 +213,26 @@ export function DestinationForm({
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader
-              title="Description"
-              description="Markdown-lite: # headings, - lists, **bold**, *italic*, [links](/url)."
-            />
-            <CardBody>
-              <label htmlFor="description" className="sr-only">
-                Destination description
-              </label>
-              <Textarea
+          <ContentManagementPanel>
+
+          <FormSection id="section-description" title="Destination overview">
+              <RichTextField
                 id="description"
                 name="description"
+                label="Destination description"
+                hideLabel
                 defaultValue={destination?.description ?? ""}
-                rows={14}
-                className="font-mono text-xs leading-relaxed"
-                placeholder={
-                  "## Getting there\n\nA short flight to Lukla, then eight days of walking…"
-                }
+                error={errors.description?.[0]}
+                onValueChange={setSeoContent}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader
-              title="Facts"
-              description="What a traveller asks before anything else."
-            />
-            <CardBody className="space-y-5">
+          <FormSection
+            id="section-facts"
+            title="Facts"
+            description="What a traveller asks before anything else."
+            bodyClassName="space-y-5"
+          >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   id="country"
@@ -329,20 +344,24 @@ export function DestinationForm({
                 </p>
               </fieldset>
 
-              <RepeatableField
-                name="highlights"
-                label="Highlights"
-                placeholder="Sunrise over Ama Dablam from Tengboche"
-                addLabel="Add highlight"
-                hint="The bullet points a listing page shows."
-                defaultValue={destination?.highlights ?? []}
-              />
-            </CardBody>
-          </Card>
+          </FormSection>
 
-          <Card>
-            <CardHeader title="Photographs" />
-            <CardBody className="space-y-5">
+          <FormSection id="section-highlights" title="Destination highlights">
+            <RepeatableField
+              name="highlights"
+              label="Highlights"
+              placeholder="Sunrise over Ama Dablam from Tengboche"
+              addLabel="Add highlight"
+              hint="The bullet points a listing page shows."
+              defaultValue={destination?.highlights ?? []}
+            />
+          </FormSection>
+
+          <FormSection
+            id="section-photographs"
+            title="Photographs"
+            bodyClassName="space-y-5"
+          >
               <ImageField
                 id="featuredImage"
                 name="featuredImage"
@@ -350,6 +369,7 @@ export function DestinationForm({
                 hint="Pick from the media library, or paste a URL from anywhere."
                 defaultValue={destination?.featuredImage ?? ""}
                 placeholder="/uploads/everest.jpg"
+                onValueChange={setSeoImage}
               />
 
               <GalleryField
@@ -357,20 +377,40 @@ export function DestinationForm({
                 hint="Shown in the order below. Use the arrows to reorder."
                 defaultValue={destination?.gallery ?? []}
               />
-            </CardBody>
-          </Card>
+          </FormSection>
+
+          <FormSection id="section-faqs" title="Destination FAQs">
+            <FaqEditor defaultValue={destination?.faqs ?? []} />
+          </FormSection>
+
+          </ContentManagementPanel>
 
           <SeoFields
+            id="section-seo"
             seo={destination?.seo ?? null}
             fallbackTitle={name}
             fallbackDescription={shortDescription}
             slug={`${basePath}/${slug}`}
             siteUrl={siteUrl}
             errors={errors}
+            content={seoContent}
+            featuredImage={seoImage || null}
           />
         </div>
 
-        <div className="space-y-5">
+        {/*
+          The rail sticks as one unit so the Fast menu stays reachable after a
+          jump. Sticking only the menu was tried and was wrong: its siblings
+          scrolled up underneath it and swallowed the Publishing heading.
+
+          `self-start` is load bearing — a grid item stretches to the row height
+          by default, which leaves sticky nothing to stick to. The rail can
+          outgrow the viewport, so it scrolls itself, and `overscroll-contain`
+          stops that scroll chaining into the page.
+        */}
+        <div className="cms-scroll space-y-5 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+          <MediaLibraryPanel />
+
           <Card>
             <CardHeader title="Publishing" />
             <CardBody className="space-y-4">
@@ -478,6 +518,7 @@ export function DestinationForm({
           </Card>
         </div>
       </div>
+      </FormSections>
     </form>
   );
 }

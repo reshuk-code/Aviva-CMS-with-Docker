@@ -30,14 +30,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cmsEntries: MetadataRoute.Sitemap = pages
     .filter((page) => page.seo.robots !== "noindex")
     .map((page) => ({
-      url: `${origin}${page.slug === "/" ? "" : page.slug}`,
+      url: `${origin}${page.slug === "/" ? "/" : `${page.slug}/`}`,
       lastModified: page.updatedAt,
     }));
 
   const developerEntries: MetadataRoute.Sitemap = developerRoutes
     .filter((route) => !route.path.includes(":") && !cmsSlugs.has(route.path))
     .map((route) => ({
-      url: `${origin}${route.path === "/" ? "" : route.path}`,
+      url: `${origin}${route.path === "/" ? "/" : `${route.path}/`}`,
     }));
 
   return [...developerEntries, ...cmsEntries];

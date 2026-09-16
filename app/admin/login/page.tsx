@@ -34,6 +34,16 @@ export default async function LoginPage({
     <main className="grid min-h-dvh place-items-center bg-muted/40 px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1.5 text-center">
+          {config.admin.logo ? (
+            /* Decorative: the brand name is the heading directly below it. */
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={config.admin.logo}
+              alt=""
+              className="mx-auto mb-3 h-10 w-auto object-contain"
+            />
+          ) : null}
+
           <h1 className="text-lg font-semibold tracking-tight">
             {config.admin.brandName ?? config.siteName}
           </h1>

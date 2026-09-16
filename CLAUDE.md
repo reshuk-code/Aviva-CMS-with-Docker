@@ -124,6 +124,16 @@ Permissions and the collection name already exist for every planned model — se
 `RESOURCES` in `lib/auth/permissions.ts` and `COLLECTIONS` in
 `lib/database/adapter.ts`. Do not invent new ones without adding them there.
 
+**A model that was never planned needs four more edits, and the recipe above
+will not remind you.** Add it to `RESOURCES` and `CONTENT_RESOURCES`
+(`lib/auth/permissions.ts`), `COLLECTIONS` (`lib/database/adapter.ts`),
+`CMS_MODULES` *and* `DEFAULT_MODULES` (`lib/cms/define-config.ts`), and the
+`collections` array in **both** `adapters/supabase/schema.sql` and
+`adapters/neon/schema.sql` — twice in the Supabase file, since the second array
+is what enables row level security. Miss the SQL and everything typechecks,
+builds, and then fails at runtime with "Could not find the table". Adding the
+rows is not enough on its own: the SQL has to be run against the project.
+
 ---
 
 ## Form rules

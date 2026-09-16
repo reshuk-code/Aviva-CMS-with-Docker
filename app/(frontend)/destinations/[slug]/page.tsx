@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PreviewBanner } from "@/components/frontend/preview-banner";
 import { RichText } from "@/components/frontend/rich-text";
 import { cms } from "@/lib/cms";
+import { EmbeddedFaqs } from "@/components/frontend/embedded-faqs";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { pluralise } from "@/lib/utils";
 import type { Destination } from "@/types/content";
@@ -148,6 +149,7 @@ export default async function DestinationPage({
                           src={url}
                           alt=""
                           loading="lazy"
+                          data-lightbox
                           className="aspect-[4/3] w-full object-cover"
                         />
                       </li>
@@ -183,7 +185,7 @@ export default async function DestinationPage({
                   We will put a route together around your dates.
                 </p>
                 <Link
-                  href="/contact"
+                  href={`/contact?destination=${encodeURIComponent(destination.slug)}`}
                   className="mt-4 inline-block rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
                 >
                   Enquire
@@ -191,6 +193,8 @@ export default async function DestinationPage({
               </section>
             </aside>
           </div>
+
+          <EmbeddedFaqs faqs={destination.faqs} heading={`Questions about ${destination.name}`} />
 
           {/* ------------------------------------------------------ tours */}
           {tours.length > 0 ? (

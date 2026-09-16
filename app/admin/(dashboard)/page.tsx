@@ -94,10 +94,28 @@ export default async function DashboardPage() {
         min-height does not provide one — the columns collapsed to their content
         and left a band of bare surface under the fold.
       */}
-      <div className="grid gap-4 lg:min-h-[calc(100dvh-7rem)] lg:grid-cols-[17rem_minmax(0,1fr)_17rem]">
+      {/*
+        Three steps, not two. There was no breakpoint between the mobile stack
+        and the three-column desktop layout, so every tablet and small laptop
+        got a single column until it snapped straight to three.
+
+        The side columns are a range rather than a fixed 17rem: fixed, they
+        ignored the extra width a wide monitor offers and handed all of it to
+        the middle column.
+
+        No `min-h` here either. Forcing the row to viewport height left a large
+        empty area under whichever card happened to be shortest.
+      */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)] xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)_minmax(15rem,18rem)]">
 
         {/* ─────────────────────────────────────────────── left column */}
-        <div className="flex flex-col gap-4 lg:order-1">
+        {/*
+          Orders are per breakpoint because the column count now changes twice.
+          At md there are two columns and this sits beside the main panel; at
+          lg it is the left rail; at xl it keeps that place with the library
+          rail restored on the right.
+        */}
+        <div className="flex flex-col gap-4 md:order-2 lg:order-1 xl:order-1">
           {showEnquiries ? (
             <Card>
               <CardBody className="p-5">
@@ -129,7 +147,11 @@ export default async function DashboardPage() {
                               index === 0 ? "var(--primary)" : "#94c9c9",
                           }}
                         />
-                        <span className="flex-1 truncate capitalize">
+                        {/* `min-w-0` is what lets it truncate. A flex item defaults to
+                            min-width:auto, so `truncate` alone widens the row to
+                            fit the text instead of clipping it — and on a narrow
+                            screen that scrolls the whole page sideways. */}
+                        <span className="min-w-0 flex-1 truncate capitalize">
                           {entry.source.replace(/-/g, " ")}
                         </span>
                         <span className="font-semibold">{entry.share}%</span>
@@ -180,7 +202,12 @@ export default async function DashboardPage() {
         </div>
 
         {/* ────────────────────────────────────────────── centre column */}
-        <div className="flex flex-col gap-4 lg:order-2">
+        {/*
+          The main panel leads on every size — at md it takes the first cell so
+          the welcome block and enquiries are what you land on, and it spans
+          both columns there rather than being squeezed into half the width.
+        */}
+        <div className="flex flex-col gap-4 md:order-1 md:col-span-2 lg:order-2 lg:col-span-1">
           <Card>
             <CardBody className="p-6">
               <h1 className="text-xl font-semibold tracking-tight">
@@ -335,7 +362,12 @@ export default async function DashboardPage() {
         </div>
 
         {/* ────────────────────────────────────────────── right column */}
-        <div className="flex flex-col gap-4 lg:order-3">
+        {/*
+          Below xl there is no third column, so this drops under the grid as a
+          full-width row instead of being wedged into a narrow one — which is
+          what happened when it kept order-3 against a two-column layout.
+        */}
+        <div className="flex flex-col gap-4 md:order-3 md:col-span-2 lg:order-3 lg:col-span-2 xl:col-span-1">
           <Card>
             <CardBody className="p-5">
               <h2 className="text-base font-semibold tracking-tight">
@@ -405,7 +437,13 @@ export default async function DashboardPage() {
                         aria-hidden="true"
                       />
                       <span className="min-w-0">
-                        <span className="block text-[0.82rem] leading-snug">
+                        {/*
+                          `break-words` matters here: an entity title is often
+                          an uploaded filename with no spaces in it, and
+                          `min-w-0` alone cannot wrap a token that offers no
+                          break opportunity — it overflowed the card instead.
+                        */}
+                        <span className="block break-words text-[0.82rem] leading-snug">
                           <strong className="font-semibold">
                             {entry.userName ?? "Someone"}
                           </strong>{" "}
@@ -449,7 +487,7 @@ function Highlight({
 }) {
   return (
     <Link href={href} className="flex items-center gap-3">
-      <span className={`grid size-11 shrink-0 place-items-center rounded-[0.85rem] ${tint}`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-lg ${tint}`}>
         <Icon className="size-5" />
       </span>
       <span className="min-w-0">
@@ -478,7 +516,7 @@ function Stat({
   return (
     <li>
       <Link href={href} className="flex items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-[0.7rem] bg-muted text-muted-foreground">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
           <Icon className="size-4" />
         </span>
         <span className="flex-1 text-sm">{label}</span>

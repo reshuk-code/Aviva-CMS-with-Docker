@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 
+import { FormSection } from "@/components/cms/form-sections";
 import { ImageField } from "@/components/cms/image-field";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { SeoAnalysis } from "@/components/cms/seo-analysis";
 import { CheckboxField, Field, Input, Select, Textarea } from "@/components/ui/field";
 import type { SeoMeta } from "@/types/seo";
 
@@ -20,15 +21,30 @@ export function SeoFields({
   fallbackDescription,
   slug,
   siteUrl,
+  content = "",
+  featuredImage = null,
   errors = {},
+  id,
 }: {
   seo: SeoMeta | null;
   fallbackTitle: string;
   fallbackDescription: string;
   slug: string;
   siteUrl: string;
+  /**
+   * The record's prose, live, for the analysis below. Optional because not
+   * every content type has a body — an activity is a paragraph and a page is
+   * a block list — and the checks that need prose degrade to a warning rather
+   * than failing when it is absent.
+   */
+  content?: string;
+  featuredImage?: string | null;
   errors?: Record<string, string[]>;
+  /** Anchor for the form's section nav. This card is owned here, not by the
+   * form, so the form cannot put an id on it from the outside. */
+  id?: string;
 }) {
+  const [focusKeyword, setFocusKeyword] = useState(seo?.focusKeyword ?? "");
   const [title, setTitle] = useState(seo?.title ?? "");
   const [description, setDescription] = useState(seo?.description ?? "");
   const [advanced, setAdvanced] = useState(false);
@@ -38,13 +54,40 @@ export function SeoFields({
     description || fallbackDescription || "No description set yet.";
 
   return (
-    <Card>
-      <CardHeader
-        title="Search engines & sharing"
-        description="Leave a field blank to fall back to the page content or your site defaults."
-      />
+    <FormSection
+      id={id}
+      title="Search engines & sharing"
+      description="Leave a field blank to fall back to the page content or your site defaults."
+      bodyClassName="space-y-5"
+    >
+        <Field
+          id="seo-focusKeyword"
+          label="Focus keyword"
+          error={errors["seo.focusKeyword"]?.[0]}
+          hint="The phrase this page should rank for. Used to grade the page below; it is never rendered."
+        >
+          {(props) => (
+            <Input
+              {...props}
+              name="seo.focusKeyword"
+              value={focusKeyword}
+              onChange={(event) => setFocusKeyword(event.target.value)}
+              placeholder="everest base camp trek"
+            />
+          )}
+        </Field>
 
-      <CardBody className="space-y-5">
+        <SeoAnalysis
+          focusKeyword={focusKeyword}
+          // The analysis grades what will actually be served, so it reads the
+          // same fallbacks the preview does rather than the raw fields.
+          title={previewTitle}
+          description={description || fallbackDescription}
+          slug={slug}
+          content={content}
+          featuredImage={featuredImage}
+        />
+
         {/* A rough preview of the Google result, so editors can see length. */}
         <div className="rounded-md border border-border bg-muted/40 p-3">
           <p className="text-xs text-muted-foreground">Search result preview</p>
@@ -53,7 +96,7 @@ export function SeoFields({
           </p>
           <p className="truncate text-xs text-[var(--success)]">
             {siteUrl}
-            {slug === "/" ? "" : slug}
+            {slug === "/" ? "/" : `${slug.replace(/\/+$/, "")}/`}
           </p>
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
             {previewDescription}
@@ -213,7 +256,6 @@ export function SeoFields({
             </Field>
           </div>
         ) : null}
-      </CardBody>
-    </Card>
+    </FormSection>
   );
 }

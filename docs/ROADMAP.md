@@ -76,6 +76,49 @@ these items are the repositories, admin screens and SDK namespaces.
       rendering by `cms.faqs.getGrouped()`. `/admin/faqs`, `cms.faqs`.
 - [x] **Enquiries** — inbox for the contact/booking form. Triage states,
       internal notes, resolved subject. `/admin/enquiries`, `cms.enquiries`.
+- [x] **Regions** — the area a trip happens in, one level above a destination:
+      name, slug, description, country, elevation range, highlights, best
+      season, gallery, featured flag and display order, with the same
+      draft/schedule/trash lifecycle as everything else. `/admin/regions`,
+      `cms.regions`.
+
+      **A content type, not a taxonomy.** A region sells — it earns a page with
+      photographs and prose, which a string on a destination cannot carry. That
+      is the exception to the rule about categories and tags a few lines below,
+      and it is the reason for it.
+
+      **`Destination.region` is deliberately untouched.** It stays free text.
+      Making it a reference would have rewritten a field that eight display
+      sites already read, and stranded every destination whose current text
+      matches no record. The two can be reconciled later if a client asks.
+
+      Regions needed new entries in `COLLECTIONS`, `CMS_MODULES` and the
+      permission `RESOURCES` — it was not one of the pre-planned models.
+
+      **Not built:** no coordinates (a region is an area; a pin at its notional
+      centre is wrong more often than useful), no public `/regions` route yet —
+      the SDK namespace is there, the project mounts it where it likes.
+
+- [x] **Admin theming is local** — `components/cms/theme.tsx` replaced
+      `next-themes`, which is no longer a dependency.
+
+      It rendered its anti-flash `<script>` from inside a Client Component, and
+      React 19 warns about that on every client render. The library exposes no
+      way to skip it: `nonce` and `scriptProps` only set attributes on a script
+      it renders regardless. Here the script is emitted by `app/admin/layout.tsx`
+      — a Server Component — so it lands in the HTML and still runs before the
+      first paint, and the client half is state only.
+
+      `useTheme()` keeps the same `{ theme, resolvedTheme, setTheme }` shape, so
+      the header toggle and the toaster were one-line import changes. Outside
+      the provider it reports light rather than throwing, because the public
+      site has no theme system by design.
+
+      **The stored preference is read in a lazy `useState` initialiser, not an
+      effect** — setState-in-an-effect is forbidden here, and it is unnecessary:
+      the script has already set the class, so this state never decides what is
+      on screen during the first render.
+
 - [ ] Entity links in the menu editor (`target: "entity"`, stubbed today).
 
 **Testimonials and FAQs carry no slug and no SEO block**, unlike every other
@@ -93,6 +136,56 @@ cannot show — the activity is in the trash, or the module is switched off for
 that client — are posted back as hidden inputs, so saving a tour does not
 silently strip tags. Deleting an activity still leaves a dangling id by
 design; nothing rewrites tours, and the delete dialog says so.
+
+- [x] **Header and footer settings** — `/admin/settings/header` and
+      `/admin/settings/footer`, the last two "Soon" items under Website.
+      Header: an announcement bar (text, optional link and link label), a
+      sticky toggle, a phone/email toggle and one call-to-action button.
+      Footer: a blurb, link columns, social and contact toggles, a copyright
+      line and a legal note. Both live on the settings singleton in the
+      adapter's key/value area, so neither needed a collection, a permission or
+      a line of SQL — `settings.read` / `settings.update` already covered them.
+
+      **A footer column names a menu; it does not carry links.** Columns store
+      `{ heading, menuKey }` and the layout resolves each through
+      `cms.navigation.get()`, so a URL is edited in one place and every menu
+      that points at it follows. The alternative — links typed into the footer
+      screen — is how a footer ends up pointing at a page that moved two months
+      ago. The cost is that a client must build a menu before they can build a
+      column, which the screen says, with a link to Navigation.
+
+      **The hard-coded template links are still the fallback**, for the footer
+      exactly as they already were for the header: configure no columns, or
+      configure columns whose menus resolve to nothing, and the built-in links
+      render. A fresh install has a navigable footer before anyone opens the
+      admin.
+
+      **The announcement bar is not inside the sticky header.** The notice
+      scrolls away and the navigation stays, which is what a client means by
+      "keep the header visible". Both halves of the bar and of the CTA are
+      validated together in `superRefine` — a label with no URL and a URL with
+      no label are both rejected rather than left for the frontend to guess at.
+
+      **Not built:** a second header layout, per-page header or footer
+      overrides, a newsletter signup, and payment or certification badge rows.
+
+- [x] **Enquiries arrive with context.** "Enquire about this trip" and the
+      destination page's "Enquire" now link to `/contact?tour=…` or
+      `?destination=…`. The contact page restates what the visitor clicked
+      through from, preselects the trip, and writes an opening line into the
+      message box; the enquiry files with `subjectType`/`subjectId` already
+      set, so the inbox shows "Tour: Everest Base Camp Trek" instead of a
+      stranger asking about an unnamed trek.
+
+      **The query string is parsed like any other untrusted input**
+      (`enquiryPrefillSchema`). A value that is not slug-shaped is rejected
+      before any lookup and the page falls back to the plain form, which is the
+      honest answer to a mangled link.
+
+      **A chosen trip beats the destination the visitor arrived from.** Both
+      would be true; only one is what they asked about. The trip select is
+      deliberately unnamed and the subject is posted as a hidden pair, so the
+      form can never file two subjects.
 
 **Categories and tags are strings on the post, not their own collections.**
 A travel blog has a dozen categories that change twice a year; two more tables
@@ -118,6 +211,148 @@ delete dialog says what it says.
       trip grid, activity grid, blog grid, testimonials, FAQ, contact form.
       The grids read published content through the SDK at render time.
 - [x] **Block registration docs** — docs/BUILDING-A-SITE.md, "Step 6 — Blocks".
+- [x] **Rich text editor** — a WordPress-style toolbar on posts, destinations,
+      tours and the Text block: a Paragraph/Heading style menu, bold, italic,
+      underline, strike, clear-formatting, lists, quote, code, divider, link
+      (Ctrl+K) and unlink, undo/redo, and a full-screen toggle. Placeholder
+      text, a live word count, and a sticky toolbar for long posts.
+      `components/cms/rich-text-field.tsx`, built on TipTap.
+
+      **The word count is derived from the document, not from TipTap's
+      CharacterCount.** It has to agree with the "3 min read" the blog
+      publishes, and that number comes from `richDocToPlainText` in the posts
+      repository. Two counters that can disagree is worse than one.
+
+      **An empty field stores a document holding one empty paragraph**, not a
+      document with no nodes. ProseMirror renders an empty document as nothing
+      at all, so there is no paragraph for the placeholder to decorate and no
+      caret target. `toEditableRichDoc` is the editor-side shape;
+      `RichText` treats a lone empty paragraph as no content, so the frontend
+      does not gain a stray blank paragraph.
+
+      **It stores a ProseMirror document, not HTML.** The renderer walks that
+      document into React elements, so the CMS still ships no HTML parser and
+      no sanitiser and editor-authored content still cannot inject markup —
+      the property `components/frontend/rich-text.tsx` had from the start.
+      Storing HTML would have been the obvious WordPress imitation and would
+      have cost a sanitiser dependency plus a standing XSS surface.
+
+      **Legacy Markdown is read, not migrated.** `lib/rich-text.ts` converts
+      the old syntax into the same document on load, so existing content opens
+      formatted and nothing rewrites a client's prose behind their back.
+
+- [x] **Images in the editor** — drag a file in, paste a screenshot, pick from
+      the media library, or paste an image address. Every route uploads through
+      `media.upload()` and inserts the stored URL; alt text is edited inline
+      while the image is selected.
+
+      **Nothing is ever embedded as base64.** A pasted screenshot arrives as a
+      data URI, and inlining one would put megabytes in a database row and
+      break the content size cap. `allowBase64: false` on the extension,
+      `isSafeImageSrc` on render, and an upload on paste are three independent
+      places that enforce it.
+
+      **Remote addresses are copied, not hotlinked**, so a published page
+      cannot break when someone else's site moves the file. Fetching an
+      editor-supplied URL is an SSRF risk, so the host is resolved and refused
+      if it points anywhere internal — see the note in `media/actions.ts` about
+      the DNS rebinding race that check does not close.
+
+      **The editor accepts images only**, unlike the media library, which
+      deliberately takes documents, audio and video too.
+
+      **Deliberately not built:** tables, a source/HTML view, per-field toolbar
+      configuration, and image captions, sizing or alignment — the Image block
+      still owns a full-width figure with a caption.
+
+- [x] **Collapsible sections and the Fast menu** on the tour and destination
+      editors: every section starts closed and folds from its header, and the
+      Fast menu in the right rail scrolls to one — or, expanded, to a single
+      field inside it. The menu itself can be hidden.
+      `components/cms/form-sections.tsx` and `form-section-nav.tsx`.
+
+      **The whole right rail sticks, not the Fast menu inside it.** Sticking
+      the menu alone was tried first and was wrong: its siblings scrolled up
+      underneath it and the Publishing card's heading vanished behind it. Not
+      sticking anything was tried next, and jumping to a section then left the
+      menu off-screen, so the next jump meant scrolling back up. Moving the
+      rail as one unit solves both — nothing inside it moves relative to
+      anything else.
+
+      Two details it depends on. `self-start` is load bearing: a grid item
+      stretches to its row height by default, which leaves `position: sticky`
+      nothing to stick to and silently does nothing. And the rail can outgrow
+      the viewport, so it scrolls itself with `overscroll-contain` — without
+      that, reaching its end chains the scroll into the page and produces the
+      "sticks, then jumps" feel this was meant to remove.
+
+      **The scroll spy reads the observer's own measurements.** Calling
+      `getBoundingClientRect()` per section in the callback forced a
+      synchronous layout on every scroll tick — eight reflows a frame. Entries
+      carry `boundingClientRect`; the result is throttled to one update per
+      frame.
+
+      That was one cause of rough scrolling in the admin, not the only one:
+      scrolling still stuttered afterwards. The other was `backdrop-blur` on
+      the editor's sticky toolbar, which makes the compositor re-sample and
+      re-blur everything behind it every frame. It is solid now. If it is ever
+      reported again, measure before changing anything — there are no scroll
+      listeners anywhere in this codebase, so the cost is compositing or forced
+      layout, never a handler.
+
+      **A closed section is hidden, never unmounted.** Tabs or conditional
+      rendering would look tidier and would quietly break saving: these forms
+      post with `new FormData(event.currentTarget)`, which reads only the
+      inputs currently in the DOM, so an unrendered section is a section whose
+      fields are silently dropped. Verified rather than assumed — a collapsed
+      "The trip" still holds all eighteen of its controls.
+
+      **A rejected save opens every section**, because a collapsed one hides
+      its own validation errors, and "fix the highlighted fields" with nothing
+      visibly highlighted leaves the editor stuck. One blunt rule beats a map
+      from field name to section, which would rot the first time a field moved.
+
+      **The field list under each section is read from the DOM**, not declared
+      per form — every `Field` renders a `<label for>`. Controls inside a
+      `<fieldset>` are represented by their `<legend>` instead of individually:
+      listing the twelve month checkboxes behind "Best season" turned a
+      seven-item menu into an eighteen-item one and buried the fields anybody
+      would actually navigate to.
+
+      Not added to the post, activity, testimonial or FAQ editors: two or three
+      sections do not justify the chrome.
+
+- [x] **Media drawer** — the library docked beside the blog, destination, tour
+      and activity editors, with images dragged out onto the featured image, a
+      gallery, the SEO image or into the text editor.
+      `components/cms/media-drawer.tsx`.
+      The fetching lives in `use-media-library.ts`, shared with the picker
+      dialog so the two cannot drift; the drag payload is one contract in
+      `media-drag.ts`, because five components have to agree on it.
+
+      **A hover highlight tests `dataTransfer.types`, not the payload**: the
+      browser refuses `getData()` during `dragover`, so a target that tried to
+      read the payload would never light up.
+
+      **The editor checks files before the library payload.** A drag from the
+      desktop can also advertise `text/uri-list`, and the other order would
+      insert a link to a file that was never uploaded.
+
+- [x] **Dated storage paths** — an upload with no folder is filed under
+      `YYYY/MM/DD/HHMMSS/`, keeping the filename it arrived with:
+      `2026/09/13/143052/everest-sunrise.jpg`. See the note in
+      `lib/storage/adapter.ts` on why the date belongs in the storage key and
+      not in the record's flat `folder` field.
+
+      **It is not collision-proof, by choice.** A random serial used to
+      guarantee that; the name is preserved instead, so two uploads of the same
+      filename in the same second land on one key. Supabase refuses that
+      (`upsert: false`) and fails loudly; the local adapter would overwrite
+      silently. Second-level precision makes it rare, not impossible.
+
+      The name keeps its case, digits and underscores. Only control characters,
+      path separators and the set illegal in a Windows path or a URL are
+      stripped — `../` in a filename is a traversal attempt, not a name.
 
 **Not built as blocks, deliberately:** video (an embed is a `<script>` from a
 third party and needs a consent decision first), map (same, plus an API key),
@@ -164,6 +399,14 @@ put a deploy inside the CMS).
 
 ## Deliberately out of scope
 
+- **An Integrations screen.** The sidebar carried one as "Soon" without any
+  entry here saying what it would do, and the only obvious answer — analytics
+  and site-verification IDs — is a card Site Settings has always rendered. A
+  greyed-out item is honest when the feature genuinely does not exist; this one
+  hid a built feature behind a "Soon" tag instead. Removed from the nav, and
+  the module switched off in `cms.config.ts` so it stops appearing as a row in
+  the permission matrix. The `RESOURCES` and `CMS_MODULES` keys are left in
+  place for a project that wants to build a real one.
 - A drag-and-drop visual builder that competes with Elementor.
 - Plugin marketplaces, themes, or anything resembling WordPress's extension
   ecosystem.

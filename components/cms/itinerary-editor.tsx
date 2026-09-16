@@ -13,10 +13,82 @@ import { useState } from "react";
 import { MediaPicker } from "@/components/cms/media-picker";
 import { MediaThumb } from "@/components/cms/media-thumb";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Textarea } from "@/components/ui/field";
+import { Input, Label, Select, Textarea } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { MEALS } from "@/schemas/tour";
-import type { ItineraryDay } from "@/types/content";
+import {
+  ACCOMMODATION_TYPES,
+  RATED_ACCOMMODATION_TYPES,
+  type AccommodationType,
+  type ItineraryDay,
+} from "@/types/content";
+
+/**
+ * Field names as the editor sees them, for error messages.
+ *
+ * Keyed by the property name the schema reports, so a message about
+ * `accommodationType` reads "Accommodation type: ..." rather than naming a
+ * field nobody can see on the screen.
+ */
+const DAY_FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  description: "Description",
+  spanDays: "Covers how many days",
+  accommodation: "Property name",
+  accommodationType: "Accommodation type",
+  accommodationRating: "Star rating",
+  meals: "Meals included",
+  activities: "Activities",
+  images: "Photographs",
+  altitude: "Altitude",
+  duration: "Walking time",
+  day: "Day number",
+  id: "Day",
+};
+
+/** Human labels for the stored accommodation vocabulary. */
+const ACCOMMODATION_LABELS: Record<AccommodationType, string> = {
+  hotel: "Hotel",
+  "tea-house": "Tea house",
+  "guest-house": "Guest house",
+  lodge: "Lodge",
+  resort: "Resort",
+  homestay: "Homestay",
+  camping: "Camping",
+  other: "Other",
+};
+
+/** Stars are offered only where they mean something. See RATED_ACCOMMODATION_TYPES. */
+function isRated(type: AccommodationType | null): boolean {
+  return RATED_ACCOMMODATION_TYPES.some((rated) => rated === type);
+}
+
+/**
+ * Start and end day for every entry, derived rather than stored.
+ *
+ * `day` on a record is the first day it covers; the length lives in
+ * `spanDays`. Numbering from a running cursor means reordering, deleting or
+ * widening an entry cannot leave a gap or an overlap — the arithmetic happens
+ * once, here, and the hidden field posts the result.
+ *
+ * A module-level function rather than an expression inside the component: the
+ * cursor is reassigned as it walks, and the React Compiler rightly refuses
+ * that in render scope.
+ */
+function numberDays(
+  entries: ItineraryDay[],
+): { day: ItineraryDay; start: number; end: number }[] {
+  const numbered: { day: ItineraryDay; start: number; end: number }[] = [];
+  let cursor = 1;
+
+  for (const day of entries) {
+    const span = Math.max(1, day.spanDays || 1);
+    numbered.push({ day, start: cursor, end: cursor + span - 1 });
+    cursor += span;
+  }
+
+  return numbered;
+}
 
 /**
  * Day-by-day itinerary editor.
@@ -50,10 +122,23 @@ export function ItineraryEditor({
   const [pickingFor, setPickingFor] = useState<string | null>(null);
 
   /** Messages for one day, keyed by the index it was submitted at. */
+  /*
+   * Every problem on one day, each named by the field it came from.
+   *
+   * The messages arrive keyed `itinerary.3.accommodationType`, and printing
+   * the message alone gave rows reading "Invalid input" with nothing to say
+   * which of a dozen controls was meant. The field name is the missing half.
+   */
   function dayErrors(index: number): string[] {
+    const prefix = `${name}.${index}.`;
+
     return Object.entries(errors)
-      .filter(([key]) => key.startsWith(`${name}.${index}.`))
-      .flatMap(([, messages]) => messages);
+      .filter(([key]) => key.startsWith(prefix))
+      .flatMap(([key, messages]) => {
+        const field = key.slice(prefix.length).split(".")[0];
+        const label = DAY_FIELD_LABELS[field] ?? field;
+        return messages.map((message) => `${label}: ${message}`);
+      });
   }
 
   function patch(id: string, changes: Partial<ItineraryDay>) {
@@ -73,13 +158,18 @@ export function ItineraryEditor({
     });
   }
 
+  const numbered = numberDays(days);
+
   function addDay() {
     const day: ItineraryDay = {
       id: crypto.randomUUID(),
-      day: days.length + 1,
+      day: (numbered[numbered.length - 1]?.end ?? 0) + 1,
+      spanDays: 1,
       title: "",
       description: "",
       accommodation: null,
+      accommodationType: null,
+      accommodationRating: null,
       meals: [],
       activities: [],
       images: [],
@@ -97,7 +187,7 @@ export function ItineraryEditor({
         type="hidden"
         name={name}
         value={JSON.stringify(
-          days.map((day, index) => ({ ...day, day: index + 1 })),
+          numbered.map(({ day, start }) => ({ ...day, day: start })),
         )}
       />
 
@@ -109,7 +199,7 @@ export function ItineraryEditor({
       ) : null}
 
       <ol className="space-y-2">
-        {days.map((day, index) => {
+        {numbered.map(({ day, start, end }, index) => {
           const open = openId === day.id;
           const problems = dayErrors(index);
 
@@ -123,7 +213,7 @@ export function ItineraryEditor({
             >
               <div className="flex items-center gap-2 bg-muted/40 px-3 py-2">
                 <span className="shrink-0 rounded bg-card px-2 py-0.5 text-xs font-medium">
-                  Day {index + 1}
+                  {start === end ? `Day ${start}` : `Days ${start}–${end}`}
                 </span>
 
                 <button
@@ -168,7 +258,10 @@ export function ItineraryEditor({
               </div>
 
               {problems.length && !open ? (
-                <p className="border-t border-border px-3 py-2 text-xs text-destructive">
+                <p
+                  data-field-error
+                  className="border-t border-border px-3 py-2 text-xs text-destructive"
+                >
                   {problems[0]}
                 </p>
               ) : null}
@@ -176,7 +269,14 @@ export function ItineraryEditor({
               {open ? (
                 <div className="space-y-4 p-3">
                   {problems.length ? (
-                    <p className="text-xs text-destructive">{problems[0]}</p>
+                    <ul
+                      data-field-error
+                      className="space-y-0.5 text-xs text-destructive"
+                    >
+                      {problems.map((problem) => (
+                        <li key={problem}>{problem}</li>
+                      ))}
+                    </ul>
                   ) : null}
 
                   <div className="space-y-1.5">
@@ -208,8 +308,64 @@ export function ItineraryEditor({
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
+                      <Label htmlFor={`day-span-${day.id}`}>
+                        Covers how many days
+                      </Label>
+                      <Input
+                        id={`day-span-${day.id}`}
+                        type="number"
+                        min={1}
+                        max={60}
+                        value={day.spanDays || 1}
+                        onChange={(event) => {
+                          const raw = Number(event.target.value);
+                          patch(day.id, {
+                            spanDays: Number.isFinite(raw)
+                              ? Math.min(60, Math.max(1, Math.trunc(raw)))
+                              : 1,
+                          });
+                        }}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave at 1 for an ordinary day. Raise it when one
+                        description covers a block, e.g. two nights
+                        acclimatising in the same place.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`day-accommodation-type-${day.id}`}>
+                        Accommodation type
+                      </Label>
+                      <Select
+                        id={`day-accommodation-type-${day.id}`}
+                        value={day.accommodationType ?? ""}
+                        onChange={(event) => {
+                          const type = (event.target.value ||
+                            null) as AccommodationType | null;
+                          patch(day.id, {
+                            accommodationType: type,
+                            // A rating is meaningless on a teahouse, so drop it
+                            // rather than leave a stale number hidden behind a
+                            // control that is no longer shown.
+                            accommodationRating: isRated(type)
+                              ? day.accommodationRating
+                              : null,
+                          });
+                        }}
+                      >
+                        <option value="">Not set</option>
+                        {ACCOMMODATION_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {ACCOMMODATION_LABELS[type]}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
                       <Label htmlFor={`day-accommodation-${day.id}`}>
-                        Accommodation
+                        Property name
                       </Label>
                       <Input
                         id={`day-accommodation-${day.id}`}
@@ -219,9 +375,35 @@ export function ItineraryEditor({
                             accommodation: event.target.value || null,
                           })
                         }
-                        placeholder="Teahouse"
+                        placeholder="Hotel Everest View"
                       />
                     </div>
+
+                    {isRated(day.accommodationType) ? (
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`day-accommodation-rating-${day.id}`}>
+                          Star rating
+                        </Label>
+                        <Select
+                          id={`day-accommodation-rating-${day.id}`}
+                          value={day.accommodationRating ?? ""}
+                          onChange={(event) =>
+                            patch(day.id, {
+                              accommodationRating: event.target.value
+                                ? Number(event.target.value)
+                                : null,
+                            })
+                          }
+                        >
+                          <option value="">Not rated</option>
+                          {[1, 2, 3, 4, 5].map((stars) => (
+                            <option key={stars} value={stars}>
+                              {stars} star{stars === 1 ? "" : "s"}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    ) : null}
 
                     <div className="space-y-1.5">
                       <Label htmlFor={`day-duration-${day.id}`}>

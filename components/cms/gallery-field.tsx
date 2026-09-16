@@ -3,10 +3,12 @@
 import { ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
 import { useState } from "react";
 
+import { hasMediaDrag, readMediaDragData } from "@/components/cms/media-drag";
 import { MediaPicker } from "@/components/cms/media-picker";
 import { MediaThumb } from "@/components/cms/media-thumb";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 /**
  * An ordered list of image URLs, picked from the media library.
@@ -44,6 +46,7 @@ export function GalleryField({
     onValueChange?.(resolved);
   }
   const [picking, setPicking] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   function move(index: number, delta: number) {
     const target = index + delta;
@@ -57,7 +60,29 @@ export function GalleryField({
   }
 
   return (
-    <div className="space-y-2">
+    <div
+      className={cn(
+        "space-y-2 rounded-md",
+        dragging && "outline outline-2 outline-offset-4 outline-primary",
+      )}
+      onDragOver={(event) => {
+        if (!hasMediaDrag(event.dataTransfer)) return;
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        const payload = readMediaDragData(event.dataTransfer);
+        setDragging(false);
+        if (!payload) return;
+        event.preventDefault();
+        // Same rule as the picker: a duplicate would render twice and confuse
+        // the move buttons, which key on the URL.
+        update((current) =>
+          current.includes(payload.url) ? current : [...current, payload.url],
+        );
+      }}
+    >
       <Label>{label}</Label>
 
       {urls.map((url) => (

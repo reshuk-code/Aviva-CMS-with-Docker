@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  trailingSlash: true,
 
   // Pin the workspace root. Without this, Turbopack walks up and finds a
   // stray lockfile in the home directory and warns on every build.

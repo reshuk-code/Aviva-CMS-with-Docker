@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { PreviewBanner } from "@/components/frontend/preview-banner";
 import { cms } from "@/lib/cms";
+import { EmbeddedFaqs } from "@/components/frontend/embedded-faqs";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { pluralise } from "@/lib/utils";
 import type { Activity } from "@/types/content";
@@ -99,10 +100,13 @@ export default async function ActivityPage({
             <img
               src={activity.featuredImage}
               alt=""
+              data-lightbox
               className="aspect-[16/9] w-full object-cover"
             />
           </figure>
         ) : null}
+
+        <EmbeddedFaqs faqs={activity.faqs} heading={`Questions about ${activity.name}`} />
 
         <section className="mt-16">
           <h2 className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">

@@ -44,6 +44,11 @@ function absolute(url: string | null, siteUrl: string): string | null {
   return `${siteUrl}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
+function pagePath(path: string): string {
+  if (path === "/" || path.endsWith("/")) return path;
+  return `${path}/`;
+}
+
 export function resolveSeo(
   source: SeoSource,
   site: SiteSettings,
@@ -63,7 +68,7 @@ export function resolveSeo(
   return {
     title,
     description,
-    canonical: absolute(seo.canonical ?? source.path, siteUrl) ?? source.path,
+    canonical: absolute(seo.canonical ?? pagePath(source.path), siteUrl) ?? pagePath(source.path),
     robots: {
       index: !siteNoIndex && seo.robots !== "noindex",
       follow: !seo.noFollow,

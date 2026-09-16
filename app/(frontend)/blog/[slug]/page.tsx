@@ -119,6 +119,7 @@ export default async function BlogPostPage({
             <img
               src={post.featuredImage}
               alt=""
+              data-lightbox
               className="aspect-[16/9] w-full object-cover"
             />
           </figure>

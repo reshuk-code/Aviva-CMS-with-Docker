@@ -50,6 +50,7 @@ export default async function DashboardLayout({
         enabledModules={getEnabledModules()}
         grantedPermissions={granted}
         brandName={config.admin.brandName ?? config.siteName}
+        logo={config.admin.logo}
         user={{ name: user.name, role: user.role }}
         signOutAction={signOutAction}
         newEnquiries={newEnquiries}
@@ -62,7 +63,14 @@ export default async function DashboardLayout({
           top padding it rested flush against the viewport while the sidebar sat
           inset by 16px — the header read as jammed into the top edge.
         */}
-        <div className="mx-auto max-w-[84rem] px-4 pb-4 pt-4">
+        {/*
+          The cap used to be 84rem, which on a wide monitor left the content
+          centred inside the space beside the sidebar — two dead gutters, the
+          left one reading as a large gap next to the navigation. 120rem fills
+          a 1080p-and-wider screen outright while still stopping rows from
+          stretching to an unreadable length on a 4K display.
+        */}
+        <div className="mx-auto w-full max-w-[120rem] px-3 pb-4 pt-4 sm:px-4">
           <AdminHeader
             user={{ name: user.name, email: user.email, role: user.role }}
             themeToggle={config.admin.themeToggle}

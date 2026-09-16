@@ -7,6 +7,7 @@ import {
   optionalUrl,
 } from "./common";
 import { seoSchema } from "./seo";
+import { embeddedFaqSchema } from "./faq";
 
 /**
  * An icon token, not a file.
@@ -41,6 +42,7 @@ export const activityInputSchema = z.object({
   description: optionalText,
   icon: activityIconSchema,
   featuredImage: optionalUrl,
+  faqs: z.array(embeddedFaqSchema).max(50).default([]),
   order: z.coerce.number().int().default(0),
   status: contentStatusSchema.default("draft"),
   publishedAt: z

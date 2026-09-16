@@ -40,7 +40,11 @@ export interface Post extends ContentRecord {
   title: string;
   slug: string;
   excerpt: string | null;
-  /** Markdown body. Rendered by the frontend, not by the CMS. */
+  /**
+   * Prose body: a serialised rich text document, or Markdown if it was written
+   * before the rich editor landed. `lib/rich-text.ts` reads both, which is why
+   * two formats are allowed to coexist. Rendered by the frontend, not the CMS.
+   */
   content: string;
   body: PageBody;
   featuredImage: string | null;
@@ -49,6 +53,34 @@ export interface Post extends ContentRecord {
   category: string | null;
   tags: string[];
   readingMinutes: number | null;
+  seo: SeoMeta;
+}
+
+/* --------------------------------------------------------------- regions */
+
+/**
+ * A region a company sells trips in — Everest, Annapurna, Mustang.
+ *
+ * A content type rather than a taxonomy: a region earns its own page with
+ * photographs and prose, which a string on a destination cannot carry. The
+ * free-text `region` on Destination is deliberately left alone; linking the two
+ * would rewrite a field that eight display sites already read.
+ */
+export interface Region extends ContentRecord {
+  name: string;
+  slug: string;
+  shortDescription: string | null;
+  description: string;
+  featuredImage: string | null;
+  gallery: string[];
+  country: string | null;
+  /** Free text, e.g. "2,800-5,400 m". Not a number: ranges are the norm. */
+  elevationRange: string | null;
+  highlights: string[];
+  faqs?: TourFaq[];
+  bestSeason: string[];
+  featured: boolean;
+  order: number;
   seo: SeoMeta;
 }
 
@@ -66,6 +98,7 @@ export interface Destination extends ContentRecord {
   latitude: number | null;
   longitude: number | null;
   highlights: string[];
+  faqs?: TourFaq[];
   bestSeason: string[];
   /** Free text, e.g. "7-14 days". Tour packages carry precise durations. */
   typicalDuration: string | null;
@@ -82,6 +115,7 @@ export interface Activity extends ContentRecord {
   description: string | null;
   icon: string | null;
   featuredImage: string | null;
+  faqs?: TourFaq[];
   order: number;
   seo: SeoMeta;
 }
@@ -98,12 +132,58 @@ export const TOUR_DIFFICULTIES = [
 
 export type TourDifficulty = (typeof TOUR_DIFFICULTIES)[number];
 
+/**
+ * Where a night is spent.
+ *
+ * A vocabulary rather than free text so the frontend can badge a day and a
+ * client can filter on it. `other` is deliberate: the list covers what Nepali
+ * operators sell and will not cover what the next client sells, and an escape
+ * hatch is cheaper than a schema change per booking.
+ */
+export const ACCOMMODATION_TYPES = [
+  "hotel",
+  "tea-house",
+  "guest-house",
+  "lodge",
+  "resort",
+  "homestay",
+  "camping",
+  "other",
+] as const;
+
+export type AccommodationType = (typeof ACCOMMODATION_TYPES)[number];
+
+/**
+ * Types a star rating means anything for.
+ *
+ * A teahouse in Lobuche is not a two-star hotel; it is a different category of
+ * thing. Offering the stars anyway would invite an editor to grade one, and
+ * the number would then show on the public site as if it were comparable.
+ */
+export const RATED_ACCOMMODATION_TYPES = ["hotel", "resort"] as const;
+
 export interface ItineraryDay {
   id: string;
+  /**
+   * First day this entry covers. Derived from position and the spans before
+   * it, never hand-typed — see `spanDays`.
+   */
   day: number;
+  /**
+   * How many consecutive days the entry covers. 1 for an ordinary day, more
+   * when one description fills a block: "Days 3-5, acclimatisation at Namche".
+   *
+   * Stored as a length rather than an end day so reordering cannot produce a
+   * gap or an overlap; the editor recomputes every `day` from these on save.
+   */
+  spanDays: number;
   title: string;
   description: string;
+  /** The property's name, e.g. "Hotel Everest View". Free text by design. */
   accommodation: string | null;
+  accommodationType: AccommodationType | null;
+  /** 1-5, and only where the type is graded. Null everywhere else. */
+  accommodationRating: number | null;
   meals: string[];
   activities: string[];
   images: string[];
@@ -113,10 +193,35 @@ export interface ItineraryDay {
   duration: string | null;
 }
 
+/**
+ * A per-person rate that applies to a band of party sizes.
+ *
+ * Trekking is priced this way because most of the cost is fixed: one guide and
+ * one permit run set of paperwork cost the same whether two people walk or
+ * eight, so the per-head price falls as the party grows. Operators quote it as
+ * a table, and clients expect to edit it as one.
+ *
+ * The rate is **per person**, not a party total. A total is the rate times the
+ * head count, which is the arithmetic every customer does in their head, and
+ * storing the total instead would make "from $1,490 per person" impossible to
+ * derive.
+ */
+export interface GroupPriceTier {
+  id: string;
+  /** Smallest party this rate applies to. At least 1. */
+  minPeople: number;
+  /** Largest party it applies to, or null for "and above". */
+  maxPeople: number | null;
+  /** Per person, in the tour's currency. */
+  price: number;
+}
+
 export interface TourFaq {
   id: string;
   question: string;
   answer: string;
+  /** Blank for a general question; a name groups related questions. */
+  category?: string | null;
 }
 
 export interface TourPackage extends ContentRecord {
@@ -130,6 +235,11 @@ export interface TourPackage extends ContentRecord {
   price: number | null;
   /** Optional strike-through price for promotions. */
   compareAtPrice: number | null;
+  /**
+   * Per-person rates by party size. Empty means one price for everyone, which
+   * is `price` above.
+   */
+  groupPricing: GroupPriceTier[];
   currency: string;
   priceNote: string | null;
   /** Nights/days as integers so tours can be filtered and sorted by length. */

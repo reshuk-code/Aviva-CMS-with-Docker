@@ -8,6 +8,7 @@ import { optionalText, optionalUrl } from "./common";
  * duplicated.
  */
 export const seoSchema = z.object({
+  focusKeyword: optionalText,
   title: optionalText,
   description: optionalText,
   canonical: optionalUrl,

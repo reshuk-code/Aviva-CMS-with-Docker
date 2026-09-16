@@ -2,6 +2,7 @@ import "server-only";
 
 import { ConflictError, NotFoundError } from "@/lib/cms/errors";
 import { getDatabase } from "@/lib/database";
+import { richDocToPlainText, toRichDoc } from "@/lib/rich-text";
 import { applyFilters, applySort, paginate } from "@/lib/database/query";
 import { slugify } from "@/schemas/common";
 import type { PostInputParsed } from "@/schemas/post";
@@ -274,7 +275,12 @@ function fields(input: PostInputParsed) {
 
 /** Minutes at a typical reading speed, floored at one for any real content. */
 function readingMinutes(content: string): number | null {
-  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  // Counted from the document's words, not the stored string: the editor
+  // stores a serialised document, and counting that would bill the reader for
+  // every `{"type":"paragraph"}` in it.
+  const words = richDocToPlainText(toRichDoc(content))
+    .split(/\s+/)
+    .filter(Boolean).length;
   if (words === 0) return null;
   return Math.max(1, Math.round(words / READING_SPEED));
 }

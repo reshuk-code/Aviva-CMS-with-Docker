@@ -4,11 +4,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PreviewBanner } from "@/components/frontend/preview-banner";
+import { EmbeddedFaqs } from "@/components/frontend/embedded-faqs";
 import { RichText } from "@/components/frontend/rich-text";
 import { cms } from "@/lib/cms";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { pluralise } from "@/lib/utils";
-import type { TourPackage } from "@/types/content";
+import { GroupPriceCalculator } from "@/components/frontend/group-price-calculator";
+import { lowestPrice } from "@/lib/pricing";
+import type { AccommodationType, TourPackage } from "@/types/content";
 
 /**
  * One tour package — the richest page in the default template.
@@ -67,6 +70,9 @@ export default async function TourPage({
     cms.activities.byIds(tour.activityIds),
     cms.testimonials.getByTour(tour.id, 3),
   ]);
+
+  // The cheapest rate on offer, which is a group rate whenever one is set.
+  const headline = lowestPrice(tour);
 
   return (
     <>
@@ -180,7 +186,7 @@ export default async function TourPage({
                           aria-hidden="true"
                           className="absolute left-0 top-1 -translate-x-1/2 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium tabular-nums"
                         >
-                          {day.day}
+                          {dayLabel(day)}
                         </span>
 
                         <h3 className="font-semibold leading-snug tracking-tight">
@@ -207,6 +213,7 @@ export default async function TourPage({
                                   src={url}
                                   alt=""
                                   loading="lazy"
+                                  data-lightbox
                                   className="size-24 object-cover"
                                 />
                               </li>
@@ -270,6 +277,7 @@ export default async function TourPage({
                           src={url}
                           alt=""
                           loading="lazy"
+                          data-lightbox
                           className="aspect-[4/3] w-full object-cover"
                         />
                       </li>
@@ -278,21 +286,7 @@ export default async function TourPage({
                 </section>
               ) : null}
 
-              {tour.faqs.length > 0 ? (
-                <section>
-                  <SectionHeading>Questions about this trip</SectionHeading>
-                  <dl className="mt-6 divide-y divide-border border-y border-border">
-                    {tour.faqs.map((faq) => (
-                      <div key={faq.id} className="py-5">
-                        <dt className="font-medium">{faq.question}</dt>
-                        <dd className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                          {faq.answer}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ) : null}
+              <EmbeddedFaqs faqs={tour.faqs} heading="Questions about this trip" />
 
               {reviews.length > 0 ? (
                 <section>
@@ -328,34 +322,48 @@ export default async function TourPage({
             {/* ------------------------------------------------ booking box */}
             <aside className="lg:sticky lg:top-8">
               <div className="rounded-card bg-card p-6 shadow-[var(--shadow-card)] dark:border dark:border-border">
-                {tour.price !== null ? (
+                {headline !== null ? (
                   <>
                     <p className="text-xs uppercase tracking-wider text-muted-foreground">
                       From
                     </p>
                     <p className="mt-1">
                       <span className="text-3xl font-semibold">
-                        {tour.currency} {tour.price.toLocaleString()}
+                        {tour.currency} {headline.toLocaleString()}
                       </span>
                       {tour.compareAtPrice !== null &&
-                      tour.compareAtPrice > tour.price ? (
+                      tour.compareAtPrice > headline ? (
                         <span className="ml-2 text-sm text-muted-foreground line-through">
                           {tour.currency} {tour.compareAtPrice.toLocaleString()}
                         </span>
                       ) : null}
                     </p>
-                    {tour.priceNote ? (
-                      <p className="mt-1.5 text-xs text-muted-foreground">
-                        {tour.priceNote}
-                      </p>
-                    ) : null}
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {/* The note usually opens with "Per person, ...", so the
+                          label is only added when it is actually missing. */}
+                      {tour.priceNote
+                        ? /per person/i.test(tour.priceNote)
+                          ? tour.priceNote
+                          : `per person · ${tour.priceNote}`
+                        : "per person"}
+                    </p>
+
+                    <GroupPriceCalculator
+                      tiers={tour.groupPricing}
+                      basePrice={tour.price}
+                      currency={tour.currency}
+                      groupSizeMin={tour.groupSizeMin}
+                      groupSizeMax={tour.groupSizeMax}
+                    />
                   </>
                 ) : (
                   <p className="text-sm font-medium">Price on request</p>
                 )}
 
+                {/* Carries the trip through so the form arrives preselected,
+                    with an opening line already written. */}
                 <Link
-                  href="/contact"
+                  href={`/contact?tour=${encodeURIComponent(tour.slug)}`}
                   className="mt-5 block rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground"
                 >
                   Enquire about this trip
@@ -458,12 +466,63 @@ function SpecRow({ tour }: { tour: TourPackage }) {
   );
 }
 
+/** Human labels for the stored accommodation vocabulary. */
+const ACCOMMODATION_LABELS: Record<AccommodationType, string> = {
+  hotel: "Hotel",
+  "tea-house": "Tea house",
+  "guest-house": "Guest house",
+  lodge: "Lodge",
+  resort: "Resort",
+  homestay: "Homestay",
+  camping: "Camping",
+  other: "Other",
+};
+
+/** "3" for a single day, "3-5" when the entry covers a block. */
+function dayLabel(day: TourPackage["itinerary"][number]): string {
+  const span = Math.max(1, day.spanDays || 1);
+  return span === 1 ? String(day.day) : `${day.day}–${day.day + span - 1}`;
+}
+
+/**
+ * The accommodation as one phrase: name, type and stars, in whichever
+ * combination the editor actually filled in.
+ *
+ * The type is dropped when the name already says it. Operators write "Lodge in
+ * Namche Bazaar", and appending the category to that produces "Lodge in Namche
+ * Bazaar (Lodge)", which reads like a bug because it is one.
+ */
+function stayLabel(day: TourPackage["itinerary"][number]): string | null {
+  const type = day.accommodationType
+    ? ACCOMMODATION_LABELS[day.accommodationType]
+    : null;
+
+  const name = day.accommodation;
+  const head = name ?? type;
+  if (!head) return null;
+
+  // Spacing is ignored on both sides: operators write "Teahouse in Phakding"
+  // and the vocabulary says "Tea house", and those are the same word.
+  const squash = (value: string) => value.toLowerCase().replace(/[\s-]+/g, "");
+  const alreadyNamed =
+    name !== null && type !== null && squash(name).includes(squash(type));
+
+  const qualifier = [
+    name && type && !alreadyNamed ? type : null,
+    day.accommodationRating ? "★".repeat(day.accommodationRating) : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return qualifier ? `${head} (${qualifier})` : head;
+}
+
 /** Accommodation, meals, altitude and walking time for one itinerary day. */
 function DayFacts({ day }: { day: TourPackage["itinerary"][number] }) {
   const facts = [
     day.duration,
     day.altitude ? `${day.altitude.toLocaleString()} m` : null,
-    day.accommodation,
+    stayLabel(day),
     day.meals.length > 0 ? day.meals.join(", ") : null,
   ].filter(Boolean);
 

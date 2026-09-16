@@ -25,6 +25,7 @@ export const COLLECTIONS = [
   "pages",
   "posts",
   "destinations",
+  "regions",
   "tours",
   "activities",
   "testimonials",

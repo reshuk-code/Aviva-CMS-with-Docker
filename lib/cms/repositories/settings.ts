@@ -47,7 +47,51 @@ function defaults(): SiteSettings {
       facebookPixelId: null,
       googleSiteVerification: null,
     },
+    header: {
+      announcement: { enabled: false, text: null, href: null, linkLabel: null },
+      sticky: true,
+      showContact: false,
+      cta: { label: null, href: null },
+    },
+    footer: {
+      blurb: null,
+      // Empty rather than a guess at menu keys that may not exist: the footer
+      // falls back to the developer's own links until the client builds menus.
+      columns: [],
+      showSocial: true,
+      showContact: true,
+      copyright: null,
+      legalNote: null,
+    },
     maintenanceMode: false,
+  };
+}
+
+/**
+ * Merge one stored header/footer over its defaults.
+ *
+ * Header nests two levels (announcement, cta), which is why this is a helper
+ * rather than the one-line spread the flatter sections get. Shared by `get`
+ * and `update` so a partial save and a partial read cannot disagree.
+ */
+function mergeChrome(
+  base: SiteSettings,
+  patch: Partial<SiteSettings>,
+): Pick<SiteSettings, "header" | "footer"> {
+  return {
+    header: {
+      ...base.header,
+      ...patch.header,
+      announcement: {
+        ...base.header.announcement,
+        ...patch.header?.announcement,
+      },
+      cta: { ...base.header.cta, ...patch.header?.cta },
+    },
+    // `columns` is an array, so the patch replaces it wholesale. That is what
+    // the footer form posts — removing the last column has to mean none left,
+    // not "no change".
+    footer: { ...base.footer, ...patch.footer },
   };
 }
 
@@ -59,8 +103,9 @@ export const settings = {
 
     if (!stored) return base;
 
-    // One level of nesting is all the shape has, so an explicit merge is
-    // clearer (and safer) than a generic deep-merge helper.
+    // An explicit merge is clearer (and safer) than a generic deep-merge
+    // helper: each section says what it does with a key the store has not
+    // seen, which is how adding a setting avoids needing a data migration.
     return {
       ...base,
       ...stored,
@@ -68,6 +113,7 @@ export const settings = {
       social: { ...base.social, ...stored.social },
       defaultSeo: { ...base.defaultSeo, ...stored.defaultSeo },
       integrations: { ...base.integrations, ...stored.integrations },
+      ...mergeChrome(base, stored),
     };
   },
 
@@ -80,6 +126,7 @@ export const settings = {
       social: { ...current.social, ...patch.social },
       defaultSeo: { ...current.defaultSeo, ...patch.defaultSeo },
       integrations: { ...current.integrations, ...patch.integrations },
+      ...mergeChrome(current, patch),
     };
 
     const db = await getDatabase();

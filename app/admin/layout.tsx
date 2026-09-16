@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { ThemeScript } from "@/components/cms/theme";
 import { ThemeProvider } from "@/components/cms/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { getCmsConfig } from "@/lib/cms/config";
@@ -31,6 +32,14 @@ export default async function AdminRootLayout({
 
   const shell = (
     <ThemeProvider>
+      {/*
+        Rendered here, from a Server Component, so it is written straight into
+        the HTML and runs before the first paint. That is the whole reason the
+        theming is local rather than next-themes: the library rendered this
+        same script from a Client Component, which React 19 warns about on
+        every client render.
+      */}
+      <ThemeScript />
       <div data-cms-admin={config.admin.basePath}>{children}</div>
       <Toaster />
     </ThemeProvider>

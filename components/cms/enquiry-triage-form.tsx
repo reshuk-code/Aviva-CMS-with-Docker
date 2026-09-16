@@ -1,18 +1,13 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, type FormEvent } from "react";
 
 import { triageEnquiryAction } from "@/app/admin/(dashboard)/enquiries/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Select, Textarea } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { ENQUIRY_STATUSES, type Enquiry } from "@/types/content";
 
@@ -54,12 +49,11 @@ export function EnquiryTriageForm({
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit}>
       <input type="hidden" name="id" value={enquiry.id} />
 
       <Card>
@@ -68,16 +62,6 @@ export function EnquiryTriageForm({
           description="Where this enquiry has got to, and what your team needs to know."
         />
         <CardBody className="space-y-4">
-          {state.message && !state.ok ? (
-            <p
-              role="alert"
-              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-            >
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              {state.message}
-            </p>
-          ) : null}
-
           <Field id="status" label="State" error={errors.status?.[0]}>
             {(props) => (
               <Select

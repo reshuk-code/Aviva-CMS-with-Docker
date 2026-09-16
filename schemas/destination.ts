@@ -7,6 +7,8 @@ import {
   optionalText,
   optionalUrl,
 } from "./common";
+import { richContentSchema } from "./rich-text";
+import { embeddedFaqSchema } from "./faq";
 import { seoSchema } from "./seo";
 
 /** Months, in calendar order — the vocabulary for "best season". */
@@ -46,7 +48,7 @@ export const destinationInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(200),
   slug: bareSlugSchema,
   shortDescription: optionalText,
-  description: z.string().default(""),
+  description: richContentSchema,
   featuredImage: optionalUrl,
   gallery: z.array(z.string().trim()).default([]),
   country: optionalText,
@@ -60,6 +62,7 @@ export const destinationInputSchema = z.object({
     "Longitude must be between -180 and 180.",
   ),
   highlights: stringListSchema,
+  faqs: z.array(embeddedFaqSchema).max(50).default([]),
   bestSeason: z.array(monthSchema).default([]),
   typicalDuration: optionalText,
   featured: z.coerce.boolean().default(false),

@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { TOUR_DIFFICULTIES } from "@/types/content";
+import {
+  ACCOMMODATION_TYPES,
+  RATED_ACCOMMODATION_TYPES,
+  TOUR_DIFFICULTIES,
+} from "@/types/content";
 
 import {
   bareSlugSchema,
@@ -10,6 +14,8 @@ import {
   optionalUrl,
 } from "./common";
 import { monthSchema, stringListSchema } from "./destination";
+import { embeddedFaqSchema } from "./faq";
+import { richContentSchema } from "./rich-text";
 import { seoSchema } from "./seo";
 
 export const tourDifficultySchema = z.enum(TOUR_DIFFICULTIES);
@@ -26,24 +32,148 @@ export const MEALS = ["Breakfast", "Lunch", "Dinner"] as const;
  * posts JSON in a single hidden field and the action parses it before this
  * schema sees it.
  */
-export const itineraryDaySchema = z.object({
+/**
+ * Accommodation type, from any of the three ways "not set" can arrive.
+ *
+ * `null` has to be accepted, and that is the whole point of this comment.
+ * Every other optional enum in this file is fed by a `<select>`, and a select
+ * posts `""` — never `null`, because form data is strings. The itinerary is
+ * the exception: it is posted as JSON, which round-trips a stored `null`
+ * faithfully. A schema that took only `""` therefore rejected every day with
+ * no accommodation set, with Zod's bare "Invalid input" and no clue which
+ * field it meant.
+ */
+export const accommodationTypeSchema = z
+  .preprocess(
+    // Normalised before the enum sees it, rather than unioned with `""` and
+    // `null`: a failing union reports its own bare "Invalid input" and throws
+    // away the branch's message, which is exactly the unhelpful error this
+    // replaced.
+    (value) =>
+      value === "" || value === null || value === undefined ? undefined : value,
+    z
+      .enum(ACCOMMODATION_TYPES, {
+        message: "Pick one of the listed accommodation types.",
+      })
+      .optional(),
+  )
+  .transform((value) => value ?? null);
+
+export const itineraryDaySchema = z
+  .object({
+    id: z.string().trim().min(1),
+    day: z.coerce.number().int().min(1).max(365),
+    // Defaulted rather than required: every itinerary written before spans
+    // existed holds one-day entries, and rejecting them would mean a content
+    // migration on live tours.
+    spanDays: z.coerce.number().int().min(1).max(60).default(1),
+    title: z.string().trim().min(1, "Every day needs a title.").max(200),
+    description: z.string().default(""),
+    accommodation: optionalText,
+    accommodationType: accommodationTypeSchema,
+    accommodationRating: optionalNumber.refine(
+      (value) => value === null || (value >= 1 && value <= 5),
+      "A rating is between 1 and 5 stars.",
+    ),
+    meals: z.array(z.string().trim()).default([]),
+    activities: z.array(z.string().trim()).default([]),
+    images: z.array(z.string().trim()).default([]),
+    altitude: optionalNumber,
+    duration: optionalText,
+  })
+  .transform((day) => ({
+    ...day,
+    // A rating only survives on a type that is actually graded. Dropping it
+    // here rather than in the editor means a stale value cannot be smuggled
+    // past the form by posting JSON directly.
+    accommodationRating: RATED_ACCOMMODATION_TYPES.some(
+      (type) => type === day.accommodationType,
+    )
+      ? day.accommodationRating
+      : null,
+  }));
+
+/**
+ * One per-person rate for a band of party sizes.
+ *
+ * `maxPeople` empty means "and above". Exactly one tier may be open-ended and
+ * it has to be the last one, which the array rules below enforce.
+ */
+export const groupPriceTierSchema = z.object({
   id: z.string().trim().min(1),
-  day: z.coerce.number().int().min(1).max(365),
-  title: z.string().trim().min(1, "Every day needs a title.").max(200),
-  description: z.string().default(""),
-  accommodation: optionalText,
-  meals: z.array(z.string().trim()).default([]),
-  activities: z.array(z.string().trim()).default([]),
-  images: z.array(z.string().trim()).default([]),
-  altitude: optionalNumber,
-  duration: optionalText,
+  minPeople: z.coerce
+    .number()
+    .int()
+    .min(1, "A group starts at one person.")
+    .max(1000),
+  maxPeople: z
+    .union([z.coerce.number().int().min(1).max(1000), z.literal("")])
+    .nullable()
+    .default(null)
+    .transform((value) => (value === "" ? null : value)),
+  price: z.coerce.number().min(0, "A price cannot be negative."),
 });
 
-export const tourFaqSchema = z.object({
-  id: z.string().trim().min(1),
-  question: z.string().trim().min(1).max(300),
-  answer: z.string().trim().min(1),
-});
+/**
+ * The rate table as a whole.
+ *
+ * The cross-row rules are the point. A table where two rows both cover a party
+ * of five does not have a price for five people, it has two, and whichever the
+ * code happens to find first is the one the customer is quoted. That is the
+ * defect in every hand-rolled version of this field — including the one this
+ * was modelled on, which happily accepts 2-5 alongside 5-8 — so it is caught
+ * here rather than left to be discovered by an angry booking.
+ *
+ * Gaps are allowed on purpose: an operator may price 1-4 and 8+ and settle
+ * 5-7 by conversation. `perPersonPrice` falls back to the flat price there.
+ */
+export const groupPricingSchema = z
+  .array(groupPriceTierSchema)
+  .max(20, "Twenty bands is already more than a customer will read.")
+  .default([])
+  .superRefine((tiers, ctx) => {
+    tiers.forEach((tier, index) => {
+      if (tier.maxPeople !== null && tier.maxPeople < tier.minPeople) {
+        ctx.addIssue({
+          code: "custom",
+          path: [index, "maxPeople"],
+          message: "The maximum cannot be below the minimum.",
+        });
+      }
+    });
+
+    // Compared in party-size order, not row order, so an editor who types the
+    // bands out of sequence is told about a real overlap rather than an
+    // imaginary one.
+    const ordered = tiers
+      .map((tier, index) => ({ tier, index }))
+      .sort((a, b) => a.tier.minPeople - b.tier.minPeople);
+
+    for (let i = 0; i < ordered.length - 1; i += 1) {
+      const current = ordered[i];
+      const next = ordered[i + 1];
+
+      if (current.tier.maxPeople === null) {
+        ctx.addIssue({
+          code: "custom",
+          path: [current.index, "maxPeople"],
+          message:
+            "An open-ended band has to be the last one. Give this a maximum.",
+        });
+        break;
+      }
+
+      if (current.tier.maxPeople >= next.tier.minPeople) {
+        ctx.addIssue({
+          code: "custom",
+          path: [next.index, "minPeople"],
+          message: `Overlaps the band above, which already covers ${next.tier.minPeople}. Start this one at ${current.tier.maxPeople + 1}.`,
+        });
+      }
+    }
+  });
+
+export const tourFaqSchema = embeddedFaqSchema;
 
 /**
  * Input accepted when creating or updating a tour package.
@@ -56,7 +186,7 @@ export const tourInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(200),
   slug: bareSlugSchema,
   shortDescription: optionalText,
-  description: z.string().default(""),
+  description: richContentSchema,
   featuredImage: optionalUrl,
   gallery: z.array(z.string().trim()).default([]),
 
@@ -68,6 +198,7 @@ export const tourInputSchema = z.object({
     (value) => value === null || value >= 0,
     "A price cannot be negative.",
   ),
+  groupPricing: groupPricingSchema,
   currency: z
     .string()
     .trim()

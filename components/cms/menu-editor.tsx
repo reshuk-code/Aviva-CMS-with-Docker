@@ -1,23 +1,13 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  IndentDecrease,
-  IndentIncrease,
-  Plus,
-  Save,
-  Trash2,
-} from "lucide-react";
-import { useActionState, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { ChevronDown, ChevronUp, Eye, EyeOff, IndentDecrease, IndentIncrease, Plus, Save, Trash2 } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
 
 import { saveMenuAction } from "@/app/admin/(dashboard)/navigation/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import type { Menu, MenuItem } from "@/types/navigation";
 
@@ -93,9 +83,8 @@ export function MenuEditor({
 
   const errors = state.fieldErrors ?? {};
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   function update(index: number, patch: Partial<FlatItem>) {
     setItems((current) =>
@@ -132,18 +121,9 @@ export function MenuEditor({
   }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form ref={formRef} action={formAction} className="space-y-5">
       {menu ? <input type="hidden" name="id" value={menu.id} /> : null}
       <input type="hidden" name="items" value={JSON.stringify(nest(items))} />
-
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          {state.message}
-        </p>
-      ) : null}
 
       <Card>
         <CardBody className="grid gap-4 sm:grid-cols-2">

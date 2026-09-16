@@ -2,10 +2,11 @@ import "server-only";
 
 import { ConflictError, NotFoundError } from "@/lib/cms/errors";
 import { getDatabase } from "@/lib/database";
+import { sortGroupTiers } from "@/lib/pricing";
 import { slugify } from "@/schemas/common";
 import type { TourInputParsed } from "@/schemas/tour";
 import type { FilterCondition, ListOptions, Paginated } from "@/types/common";
-import type { TourDifficulty, TourPackage } from "@/types/content";
+import type { ItineraryDay, TourDifficulty, TourPackage } from "@/types/content";
 
 import {
   buildListQuery,
@@ -16,6 +17,7 @@ import {
 import type { WriteContext } from "./pages";
 
 const SEARCH_FIELDS = ["name", "slug", "shortDescription"];
+
 
 /** Ceiling for the activity-usage scan. See the note on `media.folders()`. */
 const ACTIVITY_SCAN_LIMIT = 2000;
@@ -257,6 +259,25 @@ export const tours = {
 };
 
 /** The fields the form owns, shared by create and update. */
+/**
+ * Consecutive day numbers, derived from order and span.
+ *
+ * The first entry starts on day 1 and each one after it starts where the
+ * previous finished, so a two-day block pushes everything below it along. The
+ * editor shows the same arithmetic live; this is the copy that decides what is
+ * stored, and it runs on every save whatever the client sent.
+ */
+function renumberItinerary(days: ItineraryDay[]): ItineraryDay[] {
+  let cursor = 1;
+
+  return days.map((day) => {
+    const span = Math.max(1, day.spanDays || 1);
+    const numbered = { ...day, day: cursor, spanDays: span };
+    cursor += span;
+    return numbered;
+  });
+}
+
 function fields(input: TourInputParsed) {
   return {
     name: input.name,
@@ -267,6 +288,9 @@ function fields(input: TourInputParsed) {
     gallery: input.gallery,
     price: input.price,
     compareAtPrice: input.compareAtPrice,
+    // Stored in party-size order so every reader — the trip page, the rate
+    // table, the stepper — sees the same sequence without sorting first.
+    groupPricing: sortGroupTiers(input.groupPricing),
     currency: input.currency,
     priceNote: input.priceNote,
     durationDays: input.durationDays,
@@ -277,12 +301,12 @@ function fields(input: TourInputParsed) {
     maxAltitude: input.maxAltitude,
     destinationId: input.destinationId,
     activityIds: input.activityIds,
-    // Renumbered on save so the stored days always read 1..n, whatever order
-    // the editor dragged them into.
-    itinerary: input.itinerary.map((day, index) => ({
-      ...day,
-      day: index + 1,
-    })),
+    // Renumbered on save so the stored days always run consecutively, whatever
+    // order the editor dragged them into. Position alone is not the day number:
+    // an entry with `spanDays: 2` covers two, so the cursor advances by the
+    // span rather than by one. Numbering by index here would quietly flatten
+    // every multi-day block on the next save.
+    itinerary: renumberItinerary(input.itinerary),
     inclusions: input.inclusions,
     exclusions: input.exclusions,
     highlights: input.highlights,

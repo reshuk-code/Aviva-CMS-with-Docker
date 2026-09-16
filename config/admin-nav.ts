@@ -11,12 +11,14 @@ import {
   LayoutDashboard,
   Link2,
   type LucideIcon,
+  // Aliased: a bare `Map` import would shadow the JavaScript Map constructor
+  // inside this module, the same reason Image is imported as ImageIcon.
+  Map as MapIcon,
   MapPinned,
   MessageSquareQuote,
   Navigation,
   PanelBottom,
   PanelTop,
-  Plug,
   Quote,
   Share2,
   Search,
@@ -53,6 +55,7 @@ export interface AdminNavItem {
 
 export interface AdminNavGroup {
   label: string | null;
+  subheading?: string;
   items: AdminNavItem[];
 }
 
@@ -69,43 +72,17 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       },
     ],
   },
+  /*
+   * What the company actually sells comes first. Pages, Blog and Media are the
+   * scaffolding around it and sit below; a travel operator opens this panel to
+   * edit a trip far more often than to edit a page.
+   */
   {
-    label: "Content",
+    label: "Travel Management",
+    subheading: "Trip Management",
     items: [
       {
-        label: "Pages",
-        href: "/admin/pages",
-        icon: FileText,
-        module: "pages",
-        permission: "pages.read",
-        matchPrefix: true,
-      },
-      {
-        label: "Blog",
-        href: "/admin/blog",
-        icon: BookOpen,
-        module: "blog",
-        permission: "blog.read",
-        matchPrefix: true,
-      },
-      {
-        label: "Media",
-        href: "/admin/media",
-        icon: ImageIcon,
-        module: "media",
-        permission: "media.read",
-        matchPrefix: true,
-      },
-      {
-        label: "Destinations",
-        href: "/admin/destinations",
-        icon: MapPinned,
-        module: "destinations",
-        permission: "destinations.read",
-        matchPrefix: true,
-      },
-      {
-        label: "Tour Packages",
+        label: "Trip Package",
         href: "/admin/tours",
         icon: Compass,
         module: "tours",
@@ -113,11 +90,27 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         matchPrefix: true,
       },
       {
-        label: "Activities",
+        label: "Destination",
+        href: "/admin/destinations",
+        icon: MapPinned,
+        module: "destinations",
+        permission: "destinations.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Activity",
         href: "/admin/activities",
         icon: Footprints,
         module: "activities",
         permission: "activities.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Region",
+        href: "/admin/regions",
+        icon: MapIcon,
+        module: "regions",
+        permission: "regions.read",
         matchPrefix: true,
       },
       {
@@ -128,6 +121,41 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         permission: "testimonials.read",
         matchPrefix: true,
       },
+    ],
+  },
+  {
+    label: "Content Management",
+    items: [
+      {
+        label: "Blog",
+        href: "/admin/blog",
+        icon: BookOpen,
+        module: "blog",
+        permission: "blog.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Pages",
+        href: "/admin/pages",
+        icon: FileText,
+        module: "pages",
+        permission: "pages.read",
+        matchPrefix: true,
+      },
+      {
+        label: "Media",
+        href: "/admin/media",
+        icon: ImageIcon,
+        module: "media",
+        permission: "media.read",
+        matchPrefix: true,
+      },
+      /*
+       * Kept here, and switched off per project in cms.config.ts. This file is
+       * the template's nav for every client; deleting the entry would remove
+       * FAQs from all of them, which is not what one client not wanting it
+       * means.
+       */
       {
         label: "FAQs",
         href: "/admin/faqs",
@@ -155,7 +183,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: PanelTop,
         module: "settings",
         permission: "settings.read",
-        status: "planned",
       },
       {
         label: "Footer",
@@ -163,7 +190,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: PanelBottom,
         module: "settings",
         permission: "settings.read",
-        status: "planned",
       },
       {
         label: "SEO",
@@ -237,14 +263,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: ShieldCheck,
         module: "roles",
         permission: "roles.read",
-      },
-      {
-        label: "Integrations",
-        href: "/admin/integrations",
-        icon: Plug,
-        module: "integrations",
-        permission: "integrations.read",
-        status: "planned",
       },
       {
         label: "Connections",

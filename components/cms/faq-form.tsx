@@ -1,19 +1,14 @@
 "use client";
 
-import { AlertCircle, Save } from "lucide-react";
-import {
-  startTransition,
-  useActionState,
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
-import { toast } from "sonner";
+import { Save } from "lucide-react";
+import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
 
 import { saveFaqAction } from "@/app/admin/(dashboard)/faqs/actions";
+import { FaqCategoryField } from "@/components/cms/faq-category-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Label, Select, Textarea } from "@/components/ui/field";
+import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { toDateTimeLocal } from "@/lib/utils";
 import type { Faq } from "@/types/content";
@@ -36,6 +31,7 @@ export function FaqForm({ faq, categoryOptions, canPublish }: FaqFormProps) {
   const [state, formAction, pending] = useActionState(saveFaqAction, IDLE);
 
   const [status, setStatus] = useState(faq?.status ?? "draft");
+  const [category, setCategory] = useState<string | null>(faq?.category ?? null);
 
   const errors = state.fieldErrors ?? {};
 
@@ -50,23 +46,12 @@ export function FaqForm({ faq, categoryOptions, canPublish }: FaqFormProps) {
     startTransition(() => formAction(formData));
   }
 
-  useEffect(() => {
-    if (state.ok && state.message) toast.success(state.message);
-  }, [state]);
+  const formRef = useRef<HTMLFormElement>(null);
+  useFormFeedback(state, formRef);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {faq ? <input type="hidden" name="id" value={faq.id} /> : null}
-
-      {state.message && !state.ok ? (
-        <p
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          {state.message}
-        </p>
-      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
@@ -179,29 +164,13 @@ export function FaqForm({ faq, categoryOptions, canPublish }: FaqFormProps) {
           <Card>
             <CardHeader title="Placement" />
             <CardBody className="space-y-4">
-              <Field
+              <FaqCategoryField
                 id="category"
-                label="Category"
-                error={errors.category?.[0]}
-                hint="Groups the question under a heading. Leave blank for the general list."
-              >
-                {(props) => (
-                  <>
-                    <Input
-                      {...props}
-                      name="category"
-                      defaultValue={faq?.category ?? ""}
-                      list="faq-categories"
-                      placeholder="Visas & permits"
-                    />
-                    <datalist id="faq-categories">
-                      {categoryOptions.map((option) => (
-                        <option key={option} value={option} />
-                      ))}
-                    </datalist>
-                  </>
-                )}
-              </Field>
+                name="category"
+                value={category}
+                onChange={setCategory}
+                extraCategories={categoryOptions}
+              />
 
               <Field
                 id="order"

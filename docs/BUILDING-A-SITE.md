@@ -247,7 +247,7 @@ editor: add, reorder, remove. These ship built in:
 
 | Block | Reads |
 |---|---|
-| Text | Markdown-lite prose |
+| Text | Formatted prose from the rich text editor |
 | Hero | its own props |
 | Image, Gallery | its own props |
 | Call to action | its own props |

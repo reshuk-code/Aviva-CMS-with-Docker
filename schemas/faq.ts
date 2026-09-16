@@ -1,6 +1,15 @@
 import { z } from "zod";
 
 import { contentStatusSchema, optionalText } from "./common";
+import { richContentSchema } from "./rich-text";
+import { isEmptyRichContent } from "@/lib/rich-text";
+
+export const embeddedFaqSchema = z.object({
+  id: z.string().trim().min(1),
+  question: z.string().trim().min(1).max(300),
+  answer: richContentSchema.refine((value) => !isEmptyRichContent(value), "The answer is required."),
+  category: optionalText,
+});
 
 /**
  * Input accepted when creating or updating an FAQ.

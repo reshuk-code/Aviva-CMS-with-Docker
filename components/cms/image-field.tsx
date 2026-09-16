@@ -3,10 +3,12 @@
 import { ImagePlus, X } from "lucide-react";
 import { useState } from "react";
 
+import { hasMediaDrag, readMediaDragData } from "@/components/cms/media-drag";
 import { MediaPicker } from "@/components/cms/media-picker";
 import { MediaThumb } from "@/components/cms/media-thumb";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 /**
@@ -52,12 +54,33 @@ export function ImageField({
     onValueChange?.(next);
   }
   const [picking, setPicking] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   return (
     <>
       <Field id={id} label={label} hint={hint} error={error}>
         {(props) => (
-          <div className="space-y-2">
+          <div
+            className={cn(
+              "space-y-2 rounded-md",
+              dragging && "outline outline-2 outline-offset-4 outline-primary",
+            )}
+            onDragOver={(event) => {
+              // Only claim the drag if it is one of ours, so dropping a file
+              // from the desktop still does whatever the browser would do.
+              if (!hasMediaDrag(event.dataTransfer)) return;
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(event) => {
+              const payload = readMediaDragData(event.dataTransfer);
+              setDragging(false);
+              if (!payload) return;
+              event.preventDefault();
+              update(payload.url);
+            }}
+          >
             <div className="flex items-center gap-2">
               <Input
                 {...props}
