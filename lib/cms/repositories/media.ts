@@ -1,10 +1,14 @@
 import "server-only";
+import { createHash } from "node:crypto";
+import { mediaFileSchema } from "@/schemas/media-file";
 
 import { NotFoundError, ValidationError } from "@/lib/cms/errors";
 import { getDatabase } from "@/lib/database";
 import { getStorage, mediaKindFor } from "@/lib/storage";
 import type { FilterCondition, ID, Paginated } from "@/types/common";
 import type { MediaItem, MediaKind } from "@/types/content";
+
+const uploadLocks = new Map<string, Promise<void>>();
 
 const SEARCH_FIELDS = ["filename", "altText", "caption", "description"];
 
@@ -169,7 +173,7 @@ export const media = {
     folder?: string | null;
     altText?: string | null;
     uploadedBy?: ID | null;
-  }): Promise<MediaItem> {
+  }): Promise<MediaItem & { reused?: boolean }> {
     const filename = input.filename.trim();
     if (!filename) {
       throw new ValidationError("That file has no name.", {
@@ -178,6 +182,32 @@ export const media = {
     }
 
     const storage = await getStorage();
+    mediaFileSchema.parse({ filename: input.filename, mimeType: input.mimeType, size: input.body.byteLength });
+    const contentHash = createHash("sha256").update(new Uint8Array(input.body instanceof ArrayBuffer ? input.body : input.body.buffer, input.body instanceof ArrayBuffer ? 0 : input.body.byteOffset, input.body.byteLength)).digest("hex");
+    const previous = uploadLocks.get(contentHash) ?? Promise.resolve();
+    let release!: () => void;
+    const turn = new Promise<void>((resolve) => { release = resolve; });
+    uploadLocks.set(contentHash, turn);
+    await previous;
+    try {
+    const store = await collection();
+    const existing = await store.findOne({ where: [{ field: "contentHash", op: "eq", value: contentHash }] });
+    if (existing) return { ...existing, reused: true };
+    // Old records have no hash yet. Read only same-sized candidates and cache their hashes.
+    if (storage.read) {
+      for (let offset = 0; ; offset += 100) {
+        const page = await store.list({ where: [{ field: "size", op: "eq", value: input.body.byteLength }], limit: 100, offset });
+        for (const item of page.items) {
+          if (item.contentHash) continue;
+          const bytes = await storage.read(item.key).catch(() => null);
+          if (!bytes) continue;
+          const hash = createHash("sha256").update(bytes).digest("hex");
+          await store.update(item.id, { contentHash: hash });
+          if (hash === contentHash) return { ...item, contentHash: hash, reused: true };
+        }
+        if (offset + page.items.length >= page.total || page.items.length === 0) break;
+      }
+    }
     const stored = await storage.upload({
       filename,
       mimeType: input.mimeType || "application/octet-stream",
@@ -185,10 +215,9 @@ export const media = {
       folder: input.folder ?? null,
     });
 
-    const store = await collection();
-
     try {
       return await store.create({
+        contentHash,
         key: stored.key,
         url: stored.url,
         filename,
@@ -211,6 +240,7 @@ export const media = {
       await storage.delete(stored.key).catch(() => undefined);
       throw error;
     }
+    } finally { release(); if (uploadLocks.get(contentHash) === turn) uploadLocks.delete(contentHash); }
   },
 
   async update(

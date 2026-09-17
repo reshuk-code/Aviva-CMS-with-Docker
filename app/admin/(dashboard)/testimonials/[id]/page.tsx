@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { testimonials } from "@/lib/cms/repositories/testimonials";
 import { tours } from "@/lib/cms/repositories/tours";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit testimonial" };
 
@@ -31,7 +31,7 @@ export default async function EditTestimonialPage({
     <>
       <PageHeader
         title={testimonial.name}
-        description={`Last updated ${formatDateTime(testimonial.updatedAt)}`}
+        description={describeRecord(testimonial)}
         breadcrumbs={[
           { label: "Testimonials", href: "/admin/testimonials" },
           { label: testimonial.name },

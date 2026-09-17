@@ -99,4 +99,17 @@ export interface ListOptions {
   filters?: Record<string, unknown>;
 }
 
+/** Rows an admin list shows before the editor asks for more. */
 export const DEFAULT_PER_PAGE = 20;
+
+/**
+ * The most rows one request may ask for.
+ *
+ * The list UI grows its window by `DEFAULT_PER_PAGE` at a time rather than
+ * paging, so `perPage` is what the "Load next 20" button increments — which
+ * makes this the point where growing stops and real paging takes over. It is a
+ * bound on work per request, not a preference: `list()` fetches the whole page
+ * into memory in every adapter, so an unbounded value is a query string away
+ * from flattening the server.
+ */
+export const MAX_PER_PAGE = 200;

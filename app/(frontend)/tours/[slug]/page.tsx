@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 
 import { PreviewBanner } from "@/components/frontend/preview-banner";
 import { EmbeddedFaqs } from "@/components/frontend/embedded-faqs";
-import { RichText } from "@/components/frontend/rich-text";
+import { RichListText, RichText } from "@/components/frontend/rich-text";
+import { pickImage } from "@/lib/images";
+import { isEmptyRichList } from "@/lib/rich-text";
 import { cms } from "@/lib/cms";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { pluralise } from "@/lib/utils";
@@ -45,7 +47,7 @@ export async function generateMetadata({
     title: tour.name,
     path: `/tours/${tour.slug}`,
     description: tour.shortDescription,
-    image: tour.featuredImage,
+    image: pickImage(tour, "banner"),
     seo: tour.seo,
   });
 }
@@ -59,6 +61,8 @@ export default async function TourPage({
   const tour = await resolveTour(slug);
 
   if (!tour) notFound();
+
+  const heroImage = pickImage(tour, "banner");
 
   const { isEnabled: previewing } = await draftMode();
 
@@ -83,11 +87,12 @@ export default async function TourPage({
       <article>
         {/* --------------------------------------------------------- hero */}
         <header className="relative overflow-hidden border-b border-border">
-          {tour.featuredImage ? (
+          {/* The hero is the banner slot, falling back down the ladder. */}
+          {heroImage ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={tour.featuredImage}
+                src={heroImage}
                 alt=""
                 className="absolute inset-0 size-full object-cover"
               />
@@ -157,19 +162,13 @@ export default async function TourPage({
                 </section>
               ) : null}
 
-              {tour.highlights.length > 0 ? (
+              {tour.tripInfo && <section className="space-y-4"><h2 className="text-2xl font-semibold">Trip information</h2><RichText content={tour.tripInfo} /></section>}
+              {!isEmptyRichList(tour.highlights) ? (
                 <section>
                   <SectionHeading>Highlights</SectionHeading>
-                  <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
-                    {tour.highlights.map((highlight) => (
-                      <li key={highlight} className="flex gap-2.5 text-sm">
-                        <span aria-hidden="true" className="text-muted-foreground">
-                          —
-                        </span>
-                        <span className="leading-relaxed">{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-5 text-sm leading-relaxed">
+                    <RichListText content={tour.highlights} />
+                  </div>
                 </section>
               ) : null}
 
@@ -194,9 +193,7 @@ export default async function TourPage({
                         </h3>
 
                         {day.description ? (
-                          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                            {day.description}
-                          </p>
+                          <div className="mt-2 text-sm leading-relaxed text-muted-foreground"><RichText content={day.description} /></div>
                         ) : null}
 
                         <DayFacts day={day} />
@@ -226,37 +223,26 @@ export default async function TourPage({
                 </section>
               ) : null}
 
-              {tour.inclusions.length > 0 || tour.exclusions.length > 0 ? (
+              {!isEmptyRichList(tour.inclusions) ||
+              !isEmptyRichList(tour.exclusions) ? (
                 <section>
                   <SectionHeading>What is included</SectionHeading>
                   <div className="mt-5 grid gap-8 sm:grid-cols-2">
-                    {tour.inclusions.length > 0 ? (
+                    {!isEmptyRichList(tour.inclusions) ? (
                       <div>
                         <h3 className="text-sm font-medium">Included</h3>
-                        <ul className="mt-3 space-y-2 text-sm">
-                          {tour.inclusions.map((item) => (
-                            <li key={item} className="flex gap-2.5">
-                              <span aria-hidden="true" className="text-[var(--success)]">
-                                ✓
-                              </span>
-                              <span className="leading-relaxed">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="mt-3 text-sm leading-relaxed">
+                          <RichListText content={tour.inclusions} />
+                        </div>
                       </div>
                     ) : null}
 
-                    {tour.exclusions.length > 0 ? (
+                    {!isEmptyRichList(tour.exclusions) ? (
                       <div>
                         <h3 className="text-sm font-medium">Not included</h3>
-                        <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                          {tour.exclusions.map((item) => (
-                            <li key={item} className="flex gap-2.5">
-                              <span aria-hidden="true">×</span>
-                              <span className="leading-relaxed">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                          <RichListText content={tour.exclusions} />
+                        </div>
                       </div>
                     ) : null}
                   </div>

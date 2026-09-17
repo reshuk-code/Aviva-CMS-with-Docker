@@ -1,8 +1,13 @@
 "use client";
 
+import { HtmlCodeEditor, formatEditorHtml } from "@/components/cms/html-code-editor";
+import { EditorVideo } from "@/components/cms/editor-video";
+import { Video } from "lucide-react";
+import { mediaFileSchema } from "@/schemas/media-file";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Placeholder } from "@tiptap/extensions";
-import ImageExtension from "@tiptap/extension-image";
+import { EditorImage } from "@/components/cms/editor-image";
+import { TableKit } from "@tiptap/extension-table";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -112,11 +117,11 @@ export function RichTextField({
   // gives them a stable way to reach it.
   const editorRef = useRef<Editor | null>(null);
 
-  function insertImage(src: string, alt: string, at?: number) {
+  function insertImage(src: string, alt: string, at?: number, metadata: { caption?: string | null; description?: string | null } = {}) {
     const editor = editorRef.current;
     if (!editor) return;
 
-    const node = { type: "image", attrs: { src, alt } };
+    const node = { type: "image", attrs: { src, alt, ...metadata } };
     if (typeof at === "number") {
       editor.chain().focus().insertContentAt(at, node).run();
     } else {
@@ -130,6 +135,8 @@ export function RichTextField({
       // Sequential, like the media library's own upload: a dropped folder of
       // photographs should not open a dozen simultaneous uploads.
       for (const file of files) {
+        const validation = mediaFileSchema.safeParse({ filename: file.name, mimeType: file.type, size: file.size });
+        if (!validation.success) { toast.error(validation.error.issues[0].message); continue; }
         const data = new FormData();
         data.set("file", file);
 
@@ -139,7 +146,7 @@ export function RichTextField({
           continue;
         }
 
-        insertImage(result.data.url, "", at);
+        insertImage(result.data.url, result.data.alt ?? "", at, { caption: result.data.caption, description: result.data.description });
       }
     } finally {
       setUploading(false);
@@ -154,7 +161,7 @@ export function RichTextField({
         toast.error(result.message ?? "That image could not be copied.");
         return;
       }
-      insertImage(result.data.url, "");
+      insertImage(result.data.url, result.data.alt ?? "", undefined, { caption: result.data.caption, description: result.data.description });
     } finally {
       setUploading(false);
     }
@@ -170,7 +177,9 @@ export function RichTextField({
       // Base64 is refused deliberately: a pasted screenshot arrives as a data
       // URI, and embedding one would put megabytes in a database row and break
       // the size cap on save. Images are uploaded and referenced by URL.
-      ImageExtension.configure({ allowBase64: false }),
+      EditorVideo,
+      EditorImage.configure({ allowBase64: false }),
+      TableKit.configure({ table: { HTMLAttributes: { style: "width: 100%" } } }),
     ],
     content: toEditableRichDoc(defaultValue),
     // Next renders this on the server first; rendering the editor immediately
@@ -197,6 +206,7 @@ export function RichTextField({
         return false;
       },
       handlePaste(_view, event) {
+        if (/<table[\s>]/i.test(event.clipboardData?.getData("text/html") ?? "")) return false;
         const files = [...(event.clipboardData?.files ?? [])].filter((file) =>
           file.type.startsWith("image/"),
         );
@@ -295,10 +305,9 @@ export function RichTextField({
     ) ?? BLOCK_STYLES[0];
 
   const imageSelected = Boolean(editor?.isActive("image"));
-  const imageAlt =
-    typeof editor?.getAttributes("image").alt === "string"
-      ? (editor.getAttributes("image").alt as string)
-      : "";
+  const [pickingKind, setPickingKind] = useState<"image" | "video">("image");
+  const [mode, setMode] = useState<"view" | "code">("view");
+  const [html, setHtml] = useState("");
 
   // Counted from the document rather than from Tiptap's own counter, so this
   // number is the one the blog uses for reading time. A footer that disagrees
@@ -344,7 +353,7 @@ export function RichTextField({
           stutter and then catch up. At 95% opacity the blur was barely visible
           anyway.
         */}
-        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 rounded-t-md border-b border-border bg-card px-2 py-1.5">
+        <div className={`${mode === "code" ? "hidden" : "flex"} sticky top-0 z-10 flex-wrap items-center gap-0.5 rounded-t-md border-b border-border bg-card px-2 py-1.5`}>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <Button
@@ -497,10 +506,11 @@ export function RichTextField({
             editor={editor}
             label="Insert image"
             active={imageSelected}
-            onClick={() => setPicking(true)}
+            onClick={() => { setPickingKind("image"); setPicking(true); }}
           >
             <ImagePlus className="size-4" />
           </ToolbarButton>
+          <ToolbarButton editor={editor} label="Insert video" active={editor?.isActive("video")} onClick={() => { setPickingKind("video"); setPicking(true); }}><Video className="size-4" /></ToolbarButton>
 
           <ToolbarButton
             editor={editor}
@@ -593,27 +603,46 @@ export function RichTextField({
           dialog, because an image with no description is the single most
           common accessibility fault in a CMS and it should be one click away.
         */}
-        {imageSelected ? (
-          <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-2 py-1.5">
-            <Label htmlFor={`${id}-alt`} className="shrink-0 text-xs">
-              Alt text
-            </Label>
-            <Input
-              id={`${id}-alt`}
-              value={imageAlt}
-              onChange={(event) =>
-                editor
-                  ?.chain()
-                  .updateAttributes("image", { alt: event.target.value })
-                  .run()
-              }
-              placeholder="What the image shows, for screen readers"
-              className="h-8"
-            />
+        {editor?.isActive("video") && mode === "view" && <div className="grid gap-3 border-b p-3 sm:grid-cols-2">
+          {(["title", "caption"] as const).map((attribute) => <div key={attribute}>
+            <Label htmlFor={id + "-video-" + attribute}>Video {attribute} (optional)</Label>
+            <Input id={id + "-video-" + attribute} value={String(editor.getAttributes("video")[attribute] ?? "")} onChange={(event) => editor.commands.updateAttributes("video", { [attribute]: event.target.value })} />
+          </div>)}
+        </div>}
+        {imageSelected && mode === "view" ? (
+          <div className="grid gap-3 border-b bg-muted/30 p-3 sm:grid-cols-2">
+            {([
+              ["alt", "Alt text", "Describe the image for screen readers"],
+              ["title", "Title", "Shown as a tooltip"],
+              ["caption", "Caption", "Shown below the image"],
+              ["description", "Description", "Additional context below the caption"],
+            ] as const).map(([attribute, title, placeholder]) => (
+              <div key={attribute} className="space-y-1">
+                <Label htmlFor={id + "-image-" + attribute}>{title} (optional)</Label>
+                <Input id={id + "-image-" + attribute} placeholder={placeholder}
+                  value={String(editor?.getAttributes("image")[attribute] ?? "")}
+                  onChange={(event) => editor?.commands.updateAttributes("image", { [attribute]: event.target.value })} />
+              </div>
+            ))}
           </div>
         ) : null}
+        <div className="flex flex-wrap gap-2 border-b p-2">
+          <Button type="button" size="sm" variant={mode === "view" ? "primary" : "outline"} aria-pressed={mode === "view"} onClick={() => setMode("view")}>View</Button>
+          <Button type="button" size="sm" variant={mode === "code" ? "primary" : "outline"} aria-pressed={mode === "code"} onClick={() => { setHtml(formatEditorHtml(editor?.getHTML() ?? "")); setMode("code"); }}>Code</Button>
+          {mode === "view" && <>
+            <Button type="button" size="sm" variant="outline" onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>Insert table</Button>
+            {editor?.isActive("table") && <>
+              <Button type="button" size="sm" variant="outline" onClick={() => editor.chain().focus().addRowAfter().run()}>Add row</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => editor.chain().focus().addColumnAfter().run()}>Add column</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => editor.chain().focus().deleteRow().run()}>Delete row</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => editor.chain().focus().deleteColumn().run()}>Delete column</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => editor.chain().focus().deleteTable().run()}>Delete table</Button>
+            </>}
+          </>}
+        </div>
+        <div hidden={mode !== "view"}><EditorContent editor={editor} /></div>
+        {mode === "code" && <HtmlCodeEditor id={id + "-html"} label={label} value={html} onChange={(value) => { setHtml(value); editor?.commands.setContent(value); }} />}
 
-        <EditorContent editor={editor} />
 
         <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2 text-xs text-muted-foreground">
           <span>
@@ -629,9 +658,14 @@ export function RichTextField({
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
 
       <MediaPicker
+        key={pickingKind}
+        kind={pickingKind}
         open={picking}
         onOpenChange={setPicking}
-        onSelect={(item) => insertImage(item.url, item.altText ?? "")}
+        onSelect={(item) => {
+          if (item.kind === "video") editor?.chain().focus().insertContent({ type: "video", attrs: { src: item.url, title: item.filename, caption: item.caption } }).run();
+          else insertImage(item.url, item.altText ?? "", undefined, { caption: item.caption, description: item.description });
+        }}
       />
     </div>
   );

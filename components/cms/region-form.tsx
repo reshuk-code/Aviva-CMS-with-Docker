@@ -6,12 +6,11 @@ import { startTransition, useActionState, useRef, useState, type FormEvent } fro
 import { saveRegionAction } from "@/app/admin/(dashboard)/regions/actions";
 import { FaqEditor } from "@/components/cms/faq-editor";
 import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
-import { GalleryField } from "@/components/cms/gallery-field";
-import { ImageField } from "@/components/cms/image-field";
+import { FeaturedImagesField } from "@/components/cms/featured-images-field";
 import { MediaLibraryPanel } from "@/components/cms/media-drawer";
-import { RepeatableField } from "@/components/cms/repeatable-field";
 import { RichTextField } from "@/components/cms/rich-text-field";
 import { SeoFields } from "@/components/cms/seo-fields";
+import { SeoJumpCard } from "@/components/cms/seo-jump-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import {
@@ -23,6 +22,7 @@ import {
 } from "@/components/ui/field";
 import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
+import { richListContentToValue } from "@/lib/rich-text";
 import { toDateTimeLocal } from "@/lib/utils";
 import { slugify } from "@/schemas/common";
 import { MONTHS } from "@/schemas/destination";
@@ -35,19 +35,20 @@ import type { Region } from "@/types/content";
  * feeds it to an IntersectionObserver effect.
  */
 const SECTIONS = [
-  { id: "section-description", label: "Description" },
   { id: "section-facts", label: "Facts" },
+  { id: "section-description", label: "Overview" },
   { id: "section-highlights", label: "Highlights" },
-  { id: "section-photographs", label: "Photographs" },
+  { id: "section-images", label: "Images" },
   { id: "section-faqs", label: "FAQs" },
   { id: "section-seo", label: "SEO" },
 ];
 
+/** One tab per section. See the note in `tour-form.tsx`. */
 const CONTENT_TABS = [
   { id: "facts", label: "Facts", sectionIds: ["section-facts"] },
   { id: "overview", label: "Overview", sectionIds: ["section-description"] },
   { id: "highlights", label: "Highlights", sectionIds: ["section-highlights"] },
-  { id: "info", label: "Info", sectionIds: ["section-photographs"] },
+  { id: "images", label: "Images", sectionIds: ["section-images"] },
   { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
 ];
 
@@ -192,24 +193,7 @@ export function RegionForm({
 
           <ContentManagementPanel>
 
-          <FormSection id="section-description" title="Region overview">
-            <RichTextField
-              id="description"
-              name="description"
-              label="Region description"
-              hideLabel
-              defaultValue={region?.description ?? ""}
-              error={errors.description?.[0]}
-              onValueChange={setSeoContent}
-            />
-          </FormSection>
-
-          <FormSection
-            id="section-facts"
-            title="Facts"
-            description="What a traveller asks before anything else."
-            bodyClassName="space-y-5"
-          >
+          <FormSection id="section-facts" title="Facts" bodyClassName="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="country" label="Country" error={errors.country?.[0]}>
                 {(props) => (
@@ -234,7 +218,6 @@ export function RegionForm({
                 id="elevationRange"
                 label="Elevation range"
                 error={errors.elevationRange?.[0]}
-                hint="Free text. Ranges are the norm, so this is not a number."
               >
                 {(props) => (
                   <Input
@@ -263,47 +246,41 @@ export function RegionForm({
                   />
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Months you would send someone. Leave empty for year-round.
-              </p>
             </fieldset>
-
           </FormSection>
 
-          <FormSection id="section-highlights" title="Region highlights">
-            <RepeatableField
+          <FormSection id="section-description" title="Overview">
+            <RichTextField
+              id="description"
+              name="description"
+              label="Overview"
+              hideLabel
+              defaultValue={region?.description ?? ""}
+              error={errors.description?.[0]}
+              onValueChange={setSeoContent}
+            />
+          </FormSection>
+
+          <FormSection id="section-highlights" title="Highlights">
+            <RichTextField
+              id="highlights"
               name="highlights"
               label="Highlights"
-              placeholder="The classic teahouse trails"
-              addLabel="Add highlight"
-              hint="The bullet points a listing page shows."
-              defaultValue={region?.highlights ?? []}
+              hideLabel
+              defaultValue={richListContentToValue(region?.highlights)}
+              error={errors.highlights?.[0]}
             />
           </FormSection>
 
-          <FormSection
-            id="section-photographs"
-            title="Photographs"
-            bodyClassName="space-y-5"
-          >
-            <ImageField
-              id="featuredImage"
-              name="featuredImage"
-              label="Featured image"
-              hint="Pick from the media library, or paste a URL from anywhere."
-              defaultValue={region?.featuredImage ?? ""}
-              placeholder="/uploads/everest-region.jpg"
-              onValueChange={setSeoImage}
-            />
-
-            <GalleryField
-              name="gallery"
-              hint="Shown in the order below. Use the arrows to reorder."
-              defaultValue={region?.gallery ?? []}
+          <FormSection id="section-images" title="Images">
+            <FeaturedImagesField
+              record={region}
+              errors={errors}
+              onFeaturedChange={setSeoImage}
             />
           </FormSection>
 
-          <FormSection id="section-faqs" title="Region FAQs">
+          <FormSection id="section-faqs" title="FAQs">
             <FaqEditor defaultValue={region?.faqs ?? []} />
           </FormSection>
 
@@ -320,6 +297,7 @@ export function RegionForm({
             content={seoContent}
             featuredImage={seoImage || null}
           />
+
         </div>
 
         {/*
@@ -328,6 +306,8 @@ export function RegionForm({
           height by default, which leaves sticky nothing to stick to.
         */}
         <div className="cms-scroll space-y-5 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+          <SeoJumpCard />
+
           <MediaLibraryPanel />
 
           <Card>

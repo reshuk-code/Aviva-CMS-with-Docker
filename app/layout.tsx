@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Mulish } from "next/font/google";
 
 import { settings } from "@/lib/cms/repositories/settings";
 
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * The only webfont the template loads.
+ *
+ * One family, by client instruction — `--font-mono` points here too, so there
+ * is no second download and no second typeface anywhere in the admin or the
+ * site. See the note beside those tokens in `globals.css`.
+ */
+const mulish = Mulish({
+  variable: "--font-mulish",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 /**
@@ -42,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${mulish.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="min-h-full">{children}</body>

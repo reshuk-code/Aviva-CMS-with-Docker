@@ -21,7 +21,7 @@ import type { ContentStatus } from "@/types/common";
 /**
  * Destination server actions.
  *
- * The repeatable fields (gallery, highlights, best season) arrive as several
+ * The repeatable fields (gallery, best season) arrive as several
  * inputs sharing one name, which is what `getAll` is for.
  */
 
@@ -32,12 +32,15 @@ function parseFormData(formData: FormData) {
     shortDescription: formString(formData.get("shortDescription")),
     description: formString(formData.get("description")),
     featuredImage: formString(formData.get("featuredImage")),
+    featuredImageHorizontal: formString(formData.get("featuredImageHorizontal")),
+    featuredImageVertical: formString(formData.get("featuredImageVertical")),
+    bannerImage: formString(formData.get("bannerImage")),
     gallery: formData.getAll("gallery").map(String),
     country: formString(formData.get("country")),
     region: formString(formData.get("region")),
     latitude: formString(formData.get("latitude")),
     longitude: formString(formData.get("longitude")),
-    highlights: formData.getAll("highlights").map(String),
+    highlights: formString(formData.get("highlights")),
     faqs: parseFaqRows(formData),
     bestSeason: formData.getAll("bestSeason").map(String),
     typicalDuration: formString(formData.get("typicalDuration")),

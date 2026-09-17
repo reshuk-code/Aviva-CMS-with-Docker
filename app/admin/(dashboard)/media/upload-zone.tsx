@@ -2,14 +2,15 @@
 
 import { UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { uploadMediaAction } from "@/app/admin/(dashboard)/media/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
-import { IDLE } from "@/lib/actions/result";
+import { mediaFileSchema } from "@/schemas/media-file";
+import { IDLE, actionError, actionSuccess, type ActionState } from "@/lib/actions/result";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,7 +27,8 @@ export function UploadZone({
   folders: string[];
   maxUploadMb: number;
 }) {
-  const [state, formAction, pending] = useActionState(uploadMediaAction, IDLE);
+  const [state, setState] = useState<ActionState>(IDLE);
+  const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -53,8 +55,19 @@ export function UploadZone({
   }
 
   function adopt(files: FileList | null) {
-    if (!files || files.length === 0) return;
+    if (pending || !files || files.length === 0) return;
 
+    for (const file of files) {
+      const validation = mediaFileSchema.safeParse({ filename: file.name, mimeType: file.type, size: file.size });
+      const message = !validation.success ? validation.error.issues[0].message : file.size > maxUploadMb * 1024 * 1024 ? `Storage accepts files up to ${maxUploadMb} MB.` : null;
+      if (message) {
+        if (inputRef.current) inputRef.current.value = "";
+        setNames([]);
+        setState(actionError(message, { files: [message] }));
+        return;
+      }
+    }
+    setState(IDLE);
     const transfer = new DataTransfer();
     for (const file of files) transfer.items.add(file);
 
@@ -67,7 +80,40 @@ export function UploadZone({
   return (
     <Card>
       <CardBody>
-        <form ref={formRef} action={formAction} className="space-y-4">
+        <form ref={formRef} onSubmit={(event) => {
+          event.preventDefault();
+          if (pending) return;
+          const data = new FormData(event.currentTarget);
+          const files = data.getAll("files").filter((file): file is File => file instanceof File && file.size > 0);
+          if (!files.length) { setState(actionError("Choose at least one file to upload.")); return; }
+          for (const file of files) {
+            const validation = mediaFileSchema.safeParse({ filename: file.name, mimeType: file.type, size: file.size });
+            if (!validation.success) { setState(actionError(validation.error.issues[0].message)); return; }
+          }
+          startTransition(async () => {
+            try {
+              let reusedCount = 0;
+              for (let index = 0; index < files.length; index++) {
+                const request = new FormData();
+                request.set("files", files[index]);
+                request.set("folder", String(data.get("folder") ?? ""));
+                request.set("altText", files.length === 1 ? String(data.get("altText") ?? "") : "");
+                const result = await uploadMediaAction(IDLE, request);
+                if (!result.ok) { setState(result); router.refresh(); return; }
+                reusedCount += Number(result.data?.reused ?? 0);
+                // Keep only unfinished files selected, so retries never duplicate successes.
+                const remaining = new DataTransfer();
+                files.slice(index + 1).forEach((file) => remaining.items.add(file));
+                if (inputRef.current) inputRef.current.files = remaining.files;
+                setNames(files.slice(index + 1).map((file) => file.name));
+              }
+              setState(actionSuccess(reusedCount ? `Added ${files.length - reusedCount} files; reused ${reusedCount} existing files.` : `Uploaded ${files.length} file${files.length === 1 ? "" : "s"}.`));
+            } catch {
+              setState(actionError("Upload failed. Please retry the remaining files."));
+              router.refresh();
+            }
+          });
+        }} className="space-y-4">
           <div
             onDragOver={(event) => {
               event.preventDefault();
@@ -98,13 +144,14 @@ export function UploadZone({
                 </button>
               </p>
               <p className="text-xs text-muted-foreground">
-                Up to {maxUploadMb}MB per file.
+                Images: {Math.min(1, maxUploadMb)} MB max. Videos: {Math.min(50, maxUploadMb)} MB max. Other files: {Math.min(25, maxUploadMb)} MB max.
               </p>
             </div>
 
             <input
               ref={inputRef}
               type="file"
+              disabled={pending}
               name="files"
               multiple
               className="sr-only"

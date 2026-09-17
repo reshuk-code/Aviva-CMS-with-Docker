@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/ui/badge";
 import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { faqs } from "@/lib/cms/repositories/faqs";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit FAQ" };
 
@@ -29,7 +29,7 @@ export default async function EditFaqPage({
     <>
       <PageHeader
         title={faq.question}
-        description={`Last updated ${formatDateTime(faq.updatedAt)}`}
+        description={describeRecord(faq)}
         breadcrumbs={[
           { label: "FAQs", href: "/admin/faqs" },
           { label: faq.question },

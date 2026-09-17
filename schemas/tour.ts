@@ -13,7 +13,7 @@ import {
   optionalText,
   optionalUrl,
 } from "./common";
-import { monthSchema, stringListSchema } from "./destination";
+import { monthSchema } from "./destination";
 import { embeddedFaqSchema } from "./faq";
 import { richContentSchema } from "./rich-text";
 import { seoSchema } from "./seo";
@@ -68,7 +68,7 @@ export const itineraryDaySchema = z
     // migration on live tours.
     spanDays: z.coerce.number().int().min(1).max(60).default(1),
     title: z.string().trim().min(1, "Every day needs a title.").max(200),
-    description: z.string().default(""),
+    description: richContentSchema,
     accommodation: optionalText,
     accommodationType: accommodationTypeSchema,
     accommodationRating: optionalNumber.refine(
@@ -186,8 +186,12 @@ export const tourInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(200),
   slug: bareSlugSchema,
   shortDescription: optionalText,
+  tripInfo: richContentSchema,
   description: richContentSchema,
   featuredImage: optionalUrl,
+  featuredImageHorizontal: optionalUrl,
+  featuredImageVertical: optionalUrl,
+  bannerImage: optionalUrl,
   gallery: z.array(z.string().trim()).default([]),
 
   price: optionalNumber.refine(
@@ -234,9 +238,9 @@ export const tourInputSchema = z.object({
   activityIds: z.array(z.string().trim()).default([]),
 
   itinerary: z.array(itineraryDaySchema).max(365).default([]),
-  inclusions: stringListSchema,
-  exclusions: stringListSchema,
-  highlights: stringListSchema,
+  inclusions: richContentSchema,
+  exclusions: richContentSchema,
+  highlights: richContentSchema,
   faqs: z.array(tourFaqSchema).max(50).default([]),
   bestSeason: z.array(monthSchema).default([]),
 

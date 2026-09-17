@@ -126,7 +126,9 @@ export function ImageField({
       <MediaPicker
         open={picking}
         onOpenChange={setPicking}
-        onSelect={(item) => setValue(item.url)}
+        // `update`, not `setValue`: picking from the library has to notify
+        // the parent too, or the SEO panel keeps grading the old image.
+        onSelect={(item) => update(item.url)}
       />
     </>
   );

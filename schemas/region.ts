@@ -6,7 +6,7 @@ import {
   optionalText,
   optionalUrl,
 } from "./common";
-import { monthSchema, stringListSchema } from "./destination";
+import { monthSchema } from "./destination";
 import { richContentSchema } from "./rich-text";
 import { embeddedFaqSchema } from "./faq";
 import { seoSchema } from "./seo";
@@ -28,10 +28,13 @@ export const regionInputSchema = z.object({
   shortDescription: optionalText,
   description: richContentSchema,
   featuredImage: optionalUrl,
+  featuredImageHorizontal: optionalUrl,
+  featuredImageVertical: optionalUrl,
+  bannerImage: optionalUrl,
   gallery: z.array(z.string().trim()).default([]),
   country: optionalText,
   elevationRange: optionalText,
-  highlights: stringListSchema,
+  highlights: richContentSchema,
   faqs: z.array(embeddedFaqSchema).max(50).default([]),
   bestSeason: z.array(monthSchema).default([]),
   featured: z.coerce.boolean().default(false),

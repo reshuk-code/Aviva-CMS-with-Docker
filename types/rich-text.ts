@@ -52,6 +52,11 @@ export const RICH_NODE_TYPES = [
   "codeBlock",
   "horizontalRule",
   "hardBreak",
+  "table",
+  "tableRow",
+  "tableCell",
+  "tableHeader",
+  "video",
   "image",
   "text",
 ] as const;
@@ -74,5 +79,22 @@ export const RICH_MARK_TYPES = [
  * and its SEO.
  */
 export const RICH_HEADING_LEVELS = [2, 3, 4] as const;
+
+/**
+ * A field that is now one rich text document but used to be a list of them.
+ *
+ * Highlights, inclusions and exclusions were each a `string[]` of one-line
+ * entries edited through a row-per-item control. They are now a single editor
+ * where the writer makes their own bulleted, numbered or unformatted list,
+ * because "included" is prose with structure, not a set of records — nothing
+ * ever queried an individual row.
+ *
+ * The array form stays in the type rather than being migrated away: every tour
+ * a client has already written holds one, and rewriting live prose in place is
+ * a worse risk than reading two shapes. `toRichListContent()` in
+ * `lib/rich-text.ts` folds an old array into a bullet list, and is the only
+ * thing that should ever look at which shape a value is.
+ */
+export type RichListContent = string | string[];
 
 export const EMPTY_RICH_DOC: RichDoc = { type: "doc", content: [] };

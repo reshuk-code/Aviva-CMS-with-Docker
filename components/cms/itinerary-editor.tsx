@@ -1,4 +1,6 @@
 "use client";
+import { RichTextField } from "@/components/cms/rich-text-field";
+
 
 import {
   ChevronDown,
@@ -13,7 +15,7 @@ import { useState } from "react";
 import { MediaPicker } from "@/components/cms/media-picker";
 import { MediaThumb } from "@/components/cms/media-thumb";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select, Textarea } from "@/components/ui/field";
+import { Input, Label, Select } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
 import { MEALS } from "@/schemas/tour";
 import {
@@ -295,15 +297,7 @@ export function ItineraryEditor({
                     <Label htmlFor={`day-description-${day.id}`}>
                       Description
                     </Label>
-                    <Textarea
-                      id={`day-description-${day.id}`}
-                      value={day.description}
-                      onChange={(event) =>
-                        patch(day.id, { description: event.target.value })
-                      }
-                      rows={3}
-                      placeholder="An early flight into the mountains, then a gentle three-hour walk downhill…"
-                    />
+                    <RichTextField id={`day-description-${day.id}`} name={`day-description-${day.id}`} label="Description" hideLabel defaultValue={day.description} onValueChange={(value) => patch(day.id, { description: value })} />
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">

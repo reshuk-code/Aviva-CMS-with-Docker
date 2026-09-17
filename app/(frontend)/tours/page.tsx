@@ -6,6 +6,7 @@ import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { pluralise } from "@/lib/utils";
 import { TOUR_DIFFICULTIES, type TourDifficulty } from "@/types/content";
 
+import { FeaturedImage } from "@/components/frontend/featured-image";
 /**
  * Tour index — part of the default template.
  *
@@ -97,19 +98,11 @@ export default async function ToursIndexPage({
             return (
               <li key={tour.id} className="group flex flex-col">
                 <Link href={`/tours/${tour.slug}`} className="block">
-                  <div className="overflow-hidden rounded-card bg-muted shadow-[var(--shadow-card)] dark:border dark:border-border">
-                    {tour.featuredImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={tour.featuredImage}
-                        alt=""
-                        loading="lazy"
-                        className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div className="aspect-[4/3] w-full" />
-                    )}
-                  </div>
+                  <FeaturedImage
+                    record={tour}
+                    shape="card"
+                    className="rounded-card shadow-[var(--shadow-card)] dark:border dark:border-border"
+                  />
                 </Link>
 
                 <div className="mt-4 flex flex-1 flex-col">

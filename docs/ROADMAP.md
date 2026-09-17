@@ -265,6 +265,74 @@ delete dialog says what it says.
       configuration, and image captions, sizing or alignment — the Image block
       still owns a full-width figure with a caption.
 
+- [x] **A tab per content section** on the tour, destination, region and
+      activity editors, in the client's order: Facts, Pricing, Overview,
+      Highlights, Info, Itinerary, Include, Images, FAQs. One section per tab,
+      and the tab strip is the only place its name appears — the heading under
+      it was the same word twice. The tab list lives at the top of each form;
+      the machinery is `components/cms/form-sections.tsx`.
+
+      **SEO is not one of the tabs.** It is about how the page is found rather
+      than what is on it, and it reads as a different argument; it keeps its own
+      card below the panel, with a shortcut in the right rail
+      (`components/cms/seo-jump-card.tsx`) because it is otherwise off the
+      bottom of a long form.
+
+      **A hidden tab is hidden, never unmounted**, for the same reason a
+      collapsed section is: these forms post with `new FormData(form)`, which
+      reads only what is in the DOM.
+
+      **Deliberately not built:** per-user tab memory, a URL fragment per tab,
+      and lazy mounting of a tab's fields.
+
+- [x] **Four featured-image shapes plus the gallery** on all four content
+      types — normal, horizontal, vertical and a 1920x700 banner —
+      in one Images tab. `components/cms/featured-images-field.tsx`, with the
+      fallback ladders in `lib/images.ts`. A record that has a vertical image
+      renders as a portrait card in listings and one that has not keeps the
+      landscape tile, so a grid mixes the two per record.
+
+      **Deliberately not built:** cropping, resizing or any image processing.
+      The template still ships no image decoder; a crop is an editorial
+      decision and the four slots are how the client makes it. The banner
+      dimensions are a hint in the UI, not a validated constraint.
+
+- [x] **"In use" on the Images tab** — every photograph and video the record
+      references, collected from the form as it stands: featured slots,
+      gallery, itinerary days and anything dropped into a rich text editor.
+      Read-only and draggable into any slot; it deliberately does not append to
+      the gallery, which is an editorial sequence. `lib/used-media.ts`.
+
+      **The scan is structure-blind** — it parses the form's values and keeps
+      what looks like a media address, rather than knowing where each field
+      hides its images. A structure-aware version rots the first time a field
+      is added. It is manual and on mount, not live: it is far too much work to
+      redo on every keystroke.
+
+- [x] **Every record's header says when it was published**, not only when it
+      was last saved — the two are rarely the same date, and "last updated an
+      hour ago" never answered "is this live?". A scheduled record reads
+      "Publishes …" rather than "Published …". `lib/record-meta.ts`.
+
+- [x] **Admin lists show twenty rows and grow by twenty** — "Load next 20"
+      rather than page numbers. The window size is `perPage` in the URL, so a
+      list stays shareable and works without JavaScript, and page navigation
+      takes back over at `MAX_PER_PAGE` so a long collection stays reachable.
+      `components/ui/pagination.tsx`.
+
+- [x] **One typeface, Mulish, at a 16px base**, by client instruction —
+      `--font-mono` points at it too, so the slug field and the JSON-LD box are
+      proportional. That is the accepted trade, not an oversight.
+
+- [x] **Highlights, inclusions and exclusions are one rich text editor each**,
+      not a row-per-item list, so the writer chooses bulleted, numbered or no
+      list at all. Records written before this hold a `string[]`; both shapes
+      are read by `toRichListContent()` and nothing is rewritten until the
+      record is next saved. `types/rich-text.ts`, `RichListContent`.
+
+      **Deliberately not migrated.** Rewriting a client's live prose in place
+      is a worse risk than reading two shapes.
+
 - [x] **Collapsible sections and the Fast menu** on the tour and destination
       editors: every section starts closed and folds from its header, and the
       Fast menu in the right rail scrolls to one — or, expanded, to a single

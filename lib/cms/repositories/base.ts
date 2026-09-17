@@ -7,7 +7,7 @@ import type {
   ListOptions,
   QuerySpec,
 } from "@/types/common";
-import { DEFAULT_PER_PAGE } from "@/types/common";
+import { DEFAULT_PER_PAGE, MAX_PER_PAGE } from "@/types/common";
 
 /**
  * Helpers shared by every repository.
@@ -22,7 +22,7 @@ export function buildListQuery(
   searchFields: string[],
 ): QuerySpec {
   const page = Math.max(1, options?.page ?? 1);
-  const perPage = Math.min(100, Math.max(1, options?.perPage ?? DEFAULT_PER_PAGE));
+  const perPage = Math.min(MAX_PER_PAGE, Math.max(1, options?.perPage ?? DEFAULT_PER_PAGE));
 
   const where: FilterCondition[] = [];
 

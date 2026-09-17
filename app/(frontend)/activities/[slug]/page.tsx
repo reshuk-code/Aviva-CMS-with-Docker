@@ -1,3 +1,5 @@
+import { RichText } from "@/components/frontend/rich-text";
+import { richDocToPlainText, toRichDoc } from "@/lib/rich-text";
 import type { Metadata } from "next";
 import { draftMode } from "next/headers";
 import Link from "next/link";
@@ -41,7 +43,7 @@ export async function generateMetadata({
   return generateCmsMetadata({
     title: activity.name,
     path: `/activities/${activity.slug}`,
-    description: activity.description,
+    description: richDocToPlainText(toRichDoc(activity.description ?? "")),
     image: activity.featuredImage,
     seo: activity.seo,
   });
@@ -88,9 +90,7 @@ export default async function ActivityPage({
             {activity.name}
           </h1>
           {activity.description ? (
-            <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-              {activity.description}
-            </p>
+            <div className="mt-5 text-lg leading-relaxed text-muted-foreground"><RichText content={activity.description} /></div>
           ) : null}
         </header>
 

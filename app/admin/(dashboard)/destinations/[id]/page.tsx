@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { destinations } from "@/lib/cms/repositories/destinations";
 import { settings } from "@/lib/cms/repositories/settings";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit destination" };
 
@@ -31,7 +31,7 @@ export default async function EditDestinationPage({
     <>
       <PageHeader
         title={destination.name}
-        description={`Last updated ${formatDateTime(destination.updatedAt)}`}
+        description={describeRecord(destination)}
         breadcrumbs={[
           { label: "Destinations", href: "/admin/destinations" },
           { label: destination.name },

@@ -1,5 +1,7 @@
 "use server";
 
+import { mediaFileSchema, IMAGE_UPLOAD_BYTES } from "@/schemas/media-file";
+import { ValidationError } from "@/lib/cms/errors";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -44,6 +46,8 @@ async function storeEditorImage(
   }
 
   const storage = await getStorage();
+  const validation = mediaFileSchema.safeParse({ filename, mimeType, size: body.byteLength });
+  if (!validation.success) return actionError(validation.error.issues[0].message);
   if (body.byteLength > storage.maxUploadBytes) {
     const limitMb = Math.round(storage.maxUploadBytes / 1024 / 1024);
     return actionError(`That image is larger than the ${limitMb}MB limit.`);
@@ -58,7 +62,7 @@ async function storeEditorImage(
     uploadedBy: session.userId,
   });
 
-  await activity.record({
+  if (!item.reused) await activity.record({
     action: "created",
     entityType: "media",
     entityId: item.id,
@@ -69,8 +73,11 @@ async function storeEditorImage(
 
   revalidatePath("/admin/media");
 
-  return actionSuccess(`Uploaded ${item.filename}.`, {
+  return actionSuccess(`${item.reused ? "Reused" : "Uploaded"} ${item.filename}.`, {
     url: item.url,
+    alt: item.altText ?? "",
+    caption: item.caption ?? "",
+    description: item.description ?? "",
     filename: item.filename,
   });
 }
@@ -79,11 +86,14 @@ export async function uploadEditorImageAction(
   formData: FormData,
 ): Promise<ActionState> {
   try {
+    await requirePermission("media.create");
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) {
       return actionError("That file could not be read.");
     }
 
+    const validation = mediaFileSchema.safeParse({ filename: file.name, mimeType: file.type, size: file.size });
+    if (!validation.success) return actionError(validation.error.issues[0].message);
     return await storeEditorImage(
       file.name || "pasted-image",
       file.type,
@@ -172,7 +182,7 @@ export async function uploadEditorImageFromUrlAction(
     }
 
     const filename = parsed.pathname.split("/").pop() || "pasted-image";
-    return await storeEditorImage(filename, mimeType, await response.arrayBuffer());
+    return await storeEditorImage(filename, mimeType, await readImageBody(response));
   } catch (error) {
     return toActionState(error);
   }
@@ -205,6 +215,10 @@ export async function uploadMediaAction(
     const storage = await getStorage();
     const limitMb = Math.round(storage.maxUploadBytes / 1024 / 1024);
 
+    for (const file of files) {
+      const validation = mediaFileSchema.safeParse({ filename: file.name, mimeType: file.type, size: file.size });
+      if (!validation.success) return actionError(validation.error.issues[0].message, { files: [validation.error.issues[0].message] });
+    }
     const oversized = files.filter((file) => file.size > storage.maxUploadBytes);
     if (oversized.length > 0) {
       return actionError(
@@ -213,6 +227,7 @@ export async function uploadMediaAction(
       );
     }
 
+    let reusedCount = 0;
     // Sequential on purpose: parallel uploads of a whole folder of photos will
     // exhaust a serverless function's memory long before they save any time.
     for (const file of files) {
@@ -225,7 +240,8 @@ export async function uploadMediaAction(
         uploadedBy: session.userId,
       });
 
-      await activity.record({
+      if (item.reused) reusedCount++;
+      if (!item.reused) await activity.record({
         action: "created",
         entityType: "media",
         entityId: item.id,
@@ -239,8 +255,9 @@ export async function uploadMediaAction(
 
     return actionSuccess(
       files.length === 1
-        ? `Uploaded ${files[0].name}.`
-        : `Uploaded ${files.length} files.`,
+        ? `${reusedCount ? "Reused existing" : "Uploaded"} ${files[0].name}.`
+        : `Added ${files.length - reusedCount} files; reused ${reusedCount} existing files.`,
+      { reused: String(reusedCount) },
     );
   } catch (error) {
     return toActionState(error);
@@ -309,4 +326,31 @@ export async function deleteMediaAction(id: string): Promise<ActionState> {
   } catch (error) {
     return toActionState(error);
   }
+}
+
+async function readImageBody(response: Response): Promise<ArrayBuffer> {
+  if (Number(response.headers.get("content-length")) > IMAGE_UPLOAD_BYTES) {
+    await response.body?.cancel();
+    throw new ValidationError("That image exceeds the 1 MB limit.");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) throw new ValidationError("That image could not be downloaded.");
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > IMAGE_UPLOAD_BYTES) {
+        await reader.cancel();
+        throw new ValidationError("That image exceeds the 1 MB limit.");
+      }
+      chunks.push(value);
+    }
+  } finally { reader.releaseLock(); }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  return body.buffer;
 }

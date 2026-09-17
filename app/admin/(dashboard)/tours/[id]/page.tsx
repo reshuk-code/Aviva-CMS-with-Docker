@@ -9,7 +9,7 @@ import { activities } from "@/lib/cms/repositories/activities";
 import { destinations } from "@/lib/cms/repositories/destinations";
 import { settings } from "@/lib/cms/repositories/settings";
 import { tours } from "@/lib/cms/repositories/tours";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit tour" };
 
@@ -34,7 +34,7 @@ export default async function EditTourPage({
     <>
       <PageHeader
         title={tour.name}
-        description={`Last updated ${formatDateTime(tour.updatedAt)}`}
+        description={describeRecord(tour)}
         breadcrumbs={[
           { label: "Tour packages", href: "/admin/tours" },
           { label: tour.name },

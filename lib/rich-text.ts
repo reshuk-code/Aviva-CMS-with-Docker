@@ -1,4 +1,4 @@
-import type { RichDoc, RichNode } from "@/types/rich-text";
+import type { RichDoc, RichListContent, RichNode } from "@/types/rich-text";
 import { EMPTY_RICH_DOC } from "@/types/rich-text";
 
 /**
@@ -86,6 +86,47 @@ export function toEditableRichDoc(value: string | null | undefined): RichDoc {
   const doc = toRichDoc(value);
   if (doc.content.length > 0) return doc;
   return { type: "doc", content: [{ type: "paragraph" }] };
+}
+
+/**
+ * A highlights/inclusions/exclusions value as one document.
+ *
+ * Reading the two shapes described on `RichListContent`. An array is folded
+ * into a single bulleted list — which is what it always rendered as — so no
+ * caller below this line has to know the field ever had another form. Entries
+ * that are themselves rich documents keep their formatting, because each one
+ * contributes its own blocks as the list item's body rather than its text.
+ */
+export function toRichListContent(value: RichListContent | null | undefined): RichDoc {
+  if (!Array.isArray(value)) return toRichDoc(value);
+
+  const items = value
+    .map((entry) => toRichDoc(entry).content)
+    .filter((content) => content.length > 0)
+    .map((content) => ({ type: "listItem", content }));
+
+  if (items.length === 0) return EMPTY_RICH_DOC;
+  return { type: "doc", content: [{ type: "bulletList", content: items }] };
+}
+
+/**
+ * The same value as a string the editor can be opened on.
+ *
+ * The admin forms take a `defaultValue` string, not a document, so a legacy
+ * array is serialised here once and saved back in the new shape the first time
+ * the record is saved. Nothing is rewritten until an editor actually saves.
+ */
+export function richListContentToValue(
+  value: RichListContent | null | undefined,
+): string {
+  if (!Array.isArray(value)) return value ?? "";
+  const doc = toRichListContent(value);
+  return doc.content.length === 0 ? "" : JSON.stringify(doc);
+}
+
+/** True when a list field holds nothing worth rendering. */
+export function isEmptyRichList(value: RichListContent | null | undefined): boolean {
+  return richDocToPlainText(toRichListContent(value)).trim().length === 0;
 }
 
 /** True when the value holds no renderable text. */

@@ -5,6 +5,7 @@ import { cms } from "@/lib/cms";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 import { formatDate, pluralise } from "@/lib/utils";
 
+import { FeaturedImage } from "@/components/frontend/featured-image";
 /**
  * Home page — a hand-written developer route.
  *
@@ -139,19 +140,11 @@ export default async function HomePage() {
                   href={`/destinations/${destination.slug}`}
                   className="block"
                 >
-                  <div className="overflow-hidden rounded-card bg-muted shadow-[var(--shadow-card)] dark:border dark:border-border">
-                    {destination.featuredImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={destination.featuredImage}
-                        alt=""
-                        loading="lazy"
-                        className="aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      />
-                    ) : (
-                      <div className="aspect-[4/3] w-full" />
-                    )}
-                  </div>
+                  <FeaturedImage
+                    record={destination}
+                    shape="card"
+                    className="rounded-card shadow-[var(--shadow-card)] dark:border dark:border-border"
+                  />
 
                   <div className="mt-4">
                     <h3 className="text-lg font-semibold tracking-tight group-hover:underline underline-offset-4">

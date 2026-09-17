@@ -21,7 +21,7 @@ import {
 const UPLOAD_ROOT = path.join(process.cwd(), "public", "uploads");
 const PUBLIC_PREFIX = "/uploads";
 
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 export function createLocalStorageAdapter(): StorageAdapter {
   return {
@@ -55,6 +55,12 @@ export function createLocalStorageAdapter(): StorageAdapter {
         size: body.byteLength,
         mimeType: input.mimeType,
       };
+    },
+
+    async read(key: string): Promise<Uint8Array> {
+      const resolved = path.resolve(UPLOAD_ROOT, key);
+      if (!resolved.startsWith(path.resolve(UPLOAD_ROOT) + path.sep)) throw new Error("Invalid storage key.");
+      return fs.readFile(resolved);
     },
 
     async delete(key: string): Promise<boolean> {

@@ -1,4 +1,6 @@
 "use client";
+import { RichTextField } from "@/components/cms/rich-text-field";
+
 
 import { Save } from "lucide-react";
 import { startTransition, useActionState, useRef, useState, type FormEvent } from "react";
@@ -6,22 +8,33 @@ import { startTransition, useActionState, useRef, useState, type FormEvent } fro
 import { saveActivityAction } from "@/app/admin/(dashboard)/activities/actions";
 import { FaqEditor } from "@/components/cms/faq-editor";
 import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
-import { ImageField } from "@/components/cms/image-field";
+import { FeaturedImagesField } from "@/components/cms/featured-images-field";
 import { MediaLibraryPanel } from "@/components/cms/media-drawer";
 import { SeoFields } from "@/components/cms/seo-fields";
+import { SeoJumpCard } from "@/components/cms/seo-jump-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Field, Input, Label, Select, Textarea } from "@/components/ui/field";
+import { Field, Input, Label, Select } from "@/components/ui/field";
 import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { toDateTimeLocal } from "@/lib/utils";
 import { slugify } from "@/schemas/common";
 import type { Activity } from "@/types/content";
 
+/** One tab per section. See the note in `tour-form.tsx`. */
 const CONTENT_TABS = [
   { id: "overview", label: "Overview", sectionIds: ["section-overview"] },
   { id: "info", label: "Info", sectionIds: ["section-presentation"] },
+  { id: "images", label: "Images", sectionIds: ["section-images"] },
   { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
+];
+
+const SECTIONS = [
+  { id: "section-overview", label: "Overview" },
+  { id: "section-presentation", label: "Info" },
+  { id: "section-images", label: "Images" },
+  { id: "section-faqs", label: "FAQs" },
+  { id: "section-seo", label: "SEO" },
 ];
 
 export interface ActivityFormProps {
@@ -61,6 +74,9 @@ export function ActivityForm({
   );
   const slug = slugOverride ?? (name ? slugify(name) : "");
   const [description, setDescription] = useState(activity?.description ?? "");
+  // Mirrored out of the Images tab so the SEO panel grades the picture that is
+  // on screen rather than the one that was last saved.
+  const [seoImage, setSeoImage] = useState(activity?.featuredImage ?? "");
   const [status, setStatus] = useState(activity?.status ?? "draft");
 
   const errors = state.fieldErrors ?? {};
@@ -88,12 +104,12 @@ export function ActivityForm({
     <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       {activity ? <input type="hidden" name="id" value={activity.id} /> : null}
 
-      <FormSections sections={[]} tabs={CONTENT_TABS} revealAll={!state.ok && Boolean(state.fieldErrors)}>
+      <FormSections sections={SECTIONS} tabs={CONTENT_TABS} revealAll={!state.ok && Boolean(state.fieldErrors)}>
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-5">
           <ContentManagementPanel>
 
-          <FormSection id="section-overview" title="Activity overview" bodyClassName="space-y-5">
+          <FormSection id="section-overview" title="Overview" bodyClassName="space-y-5">
               <Field id="name" label="Name" error={errors.name?.[0]} required>
                 {(props) => (
                   <Input
@@ -113,14 +129,10 @@ export function ActivityForm({
                 label="Slug"
                 error={errors.slug?.[0]}
                 hint={
-                  <>
-                    Typically served at{" "}
-                    <code className="rounded bg-muted px-1">
-                      {siteUrl}
-                      {basePath}/{slug || "…"}/
-                    </code>{" "}
-                    — the exact route is your frontend&apos;s to decide.
-                  </>
+                  <code className="rounded bg-muted px-1">
+                    {siteUrl}
+                    {basePath}/{slug || "…"}/
+                  </code>
                 }
                 required
               >
@@ -142,41 +154,23 @@ export function ActivityForm({
                 )}
               </Field>
 
-              <Field
+              <RichTextField
                 id="description"
+                name="description"
                 label="Description"
                 error={errors.description?.[0]}
-                hint="A paragraph for the activity page and its cards."
-              >
-                {(props) => (
-                  <Textarea
-                    {...props}
-                    name="description"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    rows={6}
-                    placeholder="Days on foot through the Khumbu, sleeping in teahouses…"
-                  />
-                )}
-              </Field>
+                defaultValue={description}
+                onValueChange={setDescription}
+              />
           </FormSection>
 
-          <FormSection id="section-presentation" title="Activity info" bodyClassName="space-y-5">
-              <ImageField
-                id="featuredImage"
-                name="featuredImage"
-                label="Featured image"
-                hint="Pick from the media library, or paste a URL from anywhere."
-                defaultValue={activity?.featuredImage ?? ""}
-                placeholder="/uploads/trekking.jpg"
-                error={errors.featuredImage?.[0]}
-              />
-
+          <FormSection id="section-presentation" title="Info" bodyClassName="space-y-5">
               <Field
                 id="icon"
                 label="Icon"
                 error={errors.icon?.[0]}
-                hint="A name your frontend maps to an icon, not a file — mountain-snow, waves, binoculars."
+                /* Not a file. Without this the field reads as an upload slot. */
+                hint="A name your frontend maps to an icon."
               >
                 {(props) => (
                   <>
@@ -198,23 +192,37 @@ export function ActivityForm({
               </Field>
           </FormSection>
 
-          <FormSection id="section-faqs" title="Activity FAQs">
+          <FormSection id="section-images" title="Images">
+            <FeaturedImagesField
+              record={activity}
+              errors={errors}
+              onFeaturedChange={setSeoImage}
+            />
+          </FormSection>
+
+          <FormSection id="section-faqs" title="FAQs">
             <FaqEditor defaultValue={activity?.faqs ?? []} />
           </FormSection>
 
           </ContentManagementPanel>
 
           <SeoFields
+            id="section-seo"
             seo={activity?.seo ?? null}
             fallbackTitle={name}
             fallbackDescription={description}
             slug={`${basePath}/${slug}`}
             siteUrl={siteUrl}
             errors={errors}
+            content={description}
+            featuredImage={seoImage || null}
           />
+
         </div>
 
         <div className="space-y-5">
+          <SeoJumpCard />
+
           <MediaLibraryPanel />
 
           <Card>

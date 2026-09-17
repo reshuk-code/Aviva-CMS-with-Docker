@@ -7,7 +7,7 @@ import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { regions } from "@/lib/cms/repositories/regions";
 import { settings } from "@/lib/cms/repositories/settings";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit region" };
 
@@ -31,7 +31,7 @@ export default async function EditRegionPage({
     <>
       <PageHeader
         title={region.name}
-        description={`Last updated ${formatDateTime(region.updatedAt)}`}
+        description={describeRecord(region)}
         breadcrumbs={[
           { label: "Regions", href: "/admin/regions" },
           { label: region.name },

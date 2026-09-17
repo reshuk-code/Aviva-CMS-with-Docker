@@ -9,6 +9,7 @@ import {
   deleteMediaAction,
   updateMediaAction,
 } from "@/app/admin/(dashboard)/media/actions";
+import { VideoPlayer } from "@/components/ui/video-player";
 import { MediaThumb } from "@/components/cms/media-thumb";
 import { Button } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
@@ -126,14 +127,14 @@ function MediaDetails({
     >
       <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
         <div className="overflow-hidden rounded-lg border border-border">
-          <div className="aspect-video">
+          {item.kind === "video" ? <VideoPlayer caption={item.caption} src={item.url} title={item.filename} /> : <div className="aspect-video">
             <MediaThumb
               url={item.url}
               kind={item.kind}
               alt={item.altText ?? item.filename}
               className="object-contain"
             />
-          </div>
+          </div>}
         </div>
 
         <UrlRow url={item.url} />

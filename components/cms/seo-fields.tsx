@@ -54,17 +54,11 @@ export function SeoFields({
     description || fallbackDescription || "No description set yet.";
 
   return (
-    <FormSection
-      id={id}
-      title="Search engines & sharing"
-      description="Leave a field blank to fall back to the page content or your site defaults."
-      bodyClassName="space-y-5"
-    >
+    <FormSection id={id} title="SEO" bodyClassName="space-y-5">
         <Field
           id="seo-focusKeyword"
           label="Focus keyword"
           error={errors["seo.focusKeyword"]?.[0]}
-          hint="The phrase this page should rank for. Used to grade the page below; it is never rendered."
         >
           {(props) => (
             <Input
@@ -77,37 +71,11 @@ export function SeoFields({
           )}
         </Field>
 
-        <SeoAnalysis
-          focusKeyword={focusKeyword}
-          // The analysis grades what will actually be served, so it reads the
-          // same fallbacks the preview does rather than the raw fields.
-          title={previewTitle}
-          description={description || fallbackDescription}
-          slug={slug}
-          content={content}
-          featuredImage={featuredImage}
-        />
-
-        {/* A rough preview of the Google result, so editors can see length. */}
-        <div className="rounded-md border border-border bg-muted/40 p-3">
-          <p className="text-xs text-muted-foreground">Search result preview</p>
-          <p className="mt-2 truncate text-sm text-[#1a0dab] dark:text-[#8ab4f8]">
-            {previewTitle}
-          </p>
-          <p className="truncate text-xs text-[var(--success)]">
-            {siteUrl}
-            {slug === "/" ? "/" : `${slug.replace(/\/+$/, "")}/`}
-          </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-            {previewDescription}
-          </p>
-        </div>
-
         <Field
           id="seo-title"
           label="SEO title"
           error={errors["seo.title"]?.[0]}
-          hint={`${title.length} characters. Around 60 shows in full.`}
+          hint={`${title.length} characters`}
         >
           {(props) => (
             <Input
@@ -124,7 +92,7 @@ export function SeoFields({
           id="seo-description"
           label="Meta description"
           error={errors["seo.description"]?.[0]}
-          hint={`${description.length} characters. Around 155 shows in full.`}
+          hint={`${description.length} characters`}
         >
           {(props) => (
             <Textarea
@@ -138,14 +106,45 @@ export function SeoFields({
           )}
         </Field>
 
+        {/* A rough preview of the Google result, so editors can see length. */}
+        <div className="rounded-md border border-border bg-muted/40 p-3">
+          <p className="text-xs text-muted-foreground">Search result preview</p>
+          <p className="mt-2 truncate text-sm text-[#1a0dab] dark:text-[#8ab4f8]">
+            {previewTitle}
+          </p>
+          <p className="truncate text-xs text-[var(--success)]">
+            {siteUrl}
+            {slug === "/" ? "/" : `${slug.replace(/\/+$/, "")}/`}
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+            {previewDescription}
+          </p>
+        </div>
+
         <ImageField
           id="seo-ogImage"
           name="seo.ogImage"
           label="Social share image"
           error={errors["seo.ogImage"]?.[0]}
-          hint="Shown when the page is shared. Falls back to the featured image."
           defaultValue={seo?.ogImage ?? ""}
           placeholder="/uploads/social-card.jpg"
+        />
+
+        {/*
+          The grade sits under the fields it grades, not above them. It used to
+          come second — directly after the focus keyword — which put a wall of
+          red and amber bullets between an editor and the two inputs that fix
+          most of them.
+        */}
+        <SeoAnalysis
+          focusKeyword={focusKeyword}
+          // The analysis grades what will actually be served, so it reads the
+          // same fallbacks the preview does rather than the raw fields.
+          title={previewTitle}
+          description={description || fallbackDescription}
+          slug={slug}
+          content={content}
+          featuredImage={featuredImage}
         />
 
         <button
@@ -153,7 +152,7 @@ export function SeoFields({
           onClick={() => setAdvanced((value) => !value)}
           className="text-xs font-medium text-primary underline-offset-2 hover:underline"
         >
-          {advanced ? "Hide advanced SEO" : "Show advanced SEO"}
+          {advanced ? "Hide advanced" : "Show advanced"}
         </button>
 
         {advanced ? (
@@ -162,7 +161,6 @@ export function SeoFields({
               id="seo-canonical"
               label="Canonical URL"
               error={errors["seo.canonical"]?.[0]}
-              hint="Set this only when this content also lives at another address."
             >
               {(props) => (
                 <Input
@@ -175,7 +173,7 @@ export function SeoFields({
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="seo-robots" label="Search engine indexing">
+              <Field id="seo-robots" label="Indexing">
                 {(props) => (
                   <Select
                     {...props}
@@ -208,23 +206,19 @@ export function SeoFields({
             <CheckboxField
               id="seo-noFollow"
               name="seo.noFollow"
-              label="Ask search engines not to follow links on this page"
+              label="Do not follow links on this page"
               defaultChecked={
                 seo?.noFollow ?? false
               }
             />
 
-            <Field id="seo-ogTitle" label="Social title" hint="Defaults to the SEO title.">
+            <Field id="seo-ogTitle" label="Social title">
               {(props) => (
                 <Input {...props} name="seo.ogTitle" defaultValue={seo?.ogTitle ?? ""} />
               )}
             </Field>
 
-            <Field
-              id="seo-ogDescription"
-              label="Social description"
-              hint="Defaults to the meta description."
-            >
+            <Field id="seo-ogDescription" label="Social description">
               {(props) => (
                 <Textarea
                   {...props}
@@ -239,7 +233,6 @@ export function SeoFields({
               id="seo-structuredData"
               label="Structured data (JSON-LD)"
               error={errors["seo.structuredData"]?.[0]}
-              hint="Advanced. Valid JSON only; it is re-serialised before output."
             >
               {(props) => (
                 <Textarea

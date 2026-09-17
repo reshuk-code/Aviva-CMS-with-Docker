@@ -8,7 +8,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { posts } from "@/lib/cms/repositories/posts";
 import { settings } from "@/lib/cms/repositories/settings";
 import { users } from "@/lib/cms/repositories/users";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit post" };
 
@@ -34,7 +34,7 @@ export default async function EditPostPage({
     <>
       <PageHeader
         title={post.title}
-        description={`Last updated ${formatDateTime(post.updatedAt)}`}
+        description={describeRecord(post)}
         breadcrumbs={[{ label: "Blog", href: "/admin/blog" }, { label: post.title }]}
         actions={<StatusBadge status={post.status} />}
       />

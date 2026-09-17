@@ -7,7 +7,8 @@ import { requirePermission } from "@/lib/auth";
 import { hasPermission } from "@/lib/auth/permissions";
 import { pages } from "@/lib/cms/repositories/pages";
 import { settings } from "@/lib/cms/repositories/settings";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
+
 import type { CmsPageNode } from "@/types/page";
 
 export const metadata = { title: "Edit page" };
@@ -39,7 +40,7 @@ export default async function EditPagePage({
     <>
       <PageHeader
         title={page.title}
-        description={`Last updated ${formatDateTime(page.updatedAt)}`}
+        description={describeRecord(page)}
         breadcrumbs={[
           { label: "Pages", href: "/admin/pages" },
           { label: page.title },

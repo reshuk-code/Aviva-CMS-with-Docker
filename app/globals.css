@@ -124,8 +124,14 @@
   --color-surface: var(--surface);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /*
+   * One family, everywhere, by client instruction — including `--font-mono`.
+   * Mulish is proportional, so the slug field and the JSON-LD box no longer
+   * line up in columns. That is the accepted trade; do not quietly add a
+   * monospace fallback back in.
+   */
+  --font-sans: var(--font-mulish), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mulish), ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -138,10 +144,21 @@
     border-color: var(--border);
   }
 
+  /*
+   * Pinned rather than left to the browser default. The client asked for 16px
+   * and a reader who has set their own default to 20px would otherwise get a
+   * layout nobody designed; `rem` sizing everywhere else keys off this.
+   */
+  html {
+    font-size: 16px;
+  }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -219,3 +236,16 @@
 [data-lightbox] {
   cursor: zoom-in;
 }
+
+.cms-editor table { width: 100% !important; table-layout: fixed; border-collapse: collapse; margin: 1rem 0; }
+.cms-editor td, .cms-editor th { border: 1px solid var(--border); padding: .65rem; vertical-align: top; position: relative; min-width: 1em; overflow-wrap: anywhere; }
+.cms-editor th { background: var(--muted); font-weight: 600; }
+.cms-editor .selectedCell { background: var(--accent); }
+.cms-editor figcaption { text-align: left; color: var(--muted-foreground); font-size: .875rem; }
+
+.cms-editor video { width: 100%; max-height: 32rem; background: black; border-radius: .5rem; }
+.cms-editor figure.ProseMirror-selectednode { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+.video-player:fullscreen { display: flex; flex-direction: column; justify-content: center; width: 100%; height: 100%; border-radius: 0; }
+.video-player:fullscreen .video-player-screen { flex: 1; min-height: 0; aspect-ratio: auto; }
+.cms-editor .video-player video { height: 100%; max-height: none; border-radius: 0; }

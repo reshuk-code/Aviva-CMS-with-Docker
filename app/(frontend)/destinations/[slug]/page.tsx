@@ -4,7 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PreviewBanner } from "@/components/frontend/preview-banner";
-import { RichText } from "@/components/frontend/rich-text";
+import { RichListText, RichText } from "@/components/frontend/rich-text";
+import { pickImage } from "@/lib/images";
+import { isEmptyRichList } from "@/lib/rich-text";
 import { cms } from "@/lib/cms";
 import { EmbeddedFaqs } from "@/components/frontend/embedded-faqs";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
@@ -41,7 +43,7 @@ export async function generateMetadata({
     title: destination.name,
     path: `/destinations/${destination.slug}`,
     description: destination.shortDescription,
-    image: destination.featuredImage,
+    image: pickImage(destination, "banner"),
     seo: destination.seo,
   });
 }
@@ -55,6 +57,8 @@ export default async function DestinationPage({
   const destination = await resolveDestination(slug);
 
   if (!destination) notFound();
+
+  const heroImage = pickImage(destination, "banner");
 
   const { isEnabled: previewing } = await draftMode();
 
@@ -78,11 +82,12 @@ export default async function DestinationPage({
       <article>
         {/* --------------------------------------------------------- hero */}
         <header className="relative overflow-hidden border-b border-border">
-          {destination.featuredImage ? (
+          {/* The hero is the banner slot, falling back down the ladder. */}
+          {heroImage ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={destination.featuredImage}
+                src={heroImage}
                 alt=""
                 className="absolute inset-0 size-full object-cover"
               />
@@ -161,21 +166,14 @@ export default async function DestinationPage({
 
             {/* --------------------------------------------------- aside */}
             <aside className="space-y-8 lg:sticky lg:top-8">
-              {destination.highlights.length > 0 ? (
+              {!isEmptyRichList(destination.highlights) ? (
                 <section>
                   <h2 className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">
                     Highlights
                   </h2>
-                  <ul className="mt-4 space-y-2.5 text-sm">
-                    {destination.highlights.map((highlight) => (
-                      <li key={highlight} className="flex gap-2.5">
-                        <span aria-hidden="true" className="text-muted-foreground">
-                          —
-                        </span>
-                        <span className="leading-relaxed">{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mt-4 text-sm leading-relaxed">
+                    <RichListText content={destination.highlights} />
+                  </div>
                 </section>
               ) : null}
 

@@ -1,9 +1,11 @@
+import { richDocToPlainText, toRichDoc } from "@/lib/rich-text";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { cms } from "@/lib/cms";
 import { generateCmsMetadata } from "@/lib/seo/metadata";
 
+import { FeaturedImage } from "@/components/frontend/featured-image";
 /**
  * Activity index — part of the default template.
  *
@@ -64,15 +66,7 @@ export default async function ActivitiesIndexPage() {
                   href={`/activities/${activity.slug}`}
                   className="flex h-full flex-col overflow-hidden rounded-card bg-card shadow-[var(--shadow-card)] transition-shadow hover:shadow-lg dark:border dark:border-border"
                 >
-                  {activity.featuredImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={activity.featuredImage}
-                      alt=""
-                      loading="lazy"
-                      className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                    />
-                  ) : null}
+                  <FeaturedImage record={activity} shape="horizontal" />
 
                   <div className="flex flex-1 flex-col p-5">
                     <h2 className="font-semibold tracking-tight">
@@ -81,7 +75,7 @@ export default async function ActivitiesIndexPage() {
 
                     {activity.description ? (
                       <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-                        {activity.description}
+                        {richDocToPlainText(toRichDoc(activity.description))}
                       </p>
                     ) : (
                       <div className="flex-1" />

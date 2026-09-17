@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CONTENT_STATUSES, DEFAULT_PER_PAGE } from "@/types/common";
+import { CONTENT_STATUSES, DEFAULT_PER_PAGE, MAX_PER_PAGE } from "@/types/common";
 
 /**
  * Shared Zod pieces. Every mutation that crosses a trust boundary (server
@@ -100,7 +100,7 @@ export const bareSlugSchema = z
 /** Query-string parameters accepted by every admin list view. */
 export const listOptionsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  perPage: z.coerce.number().int().min(1).max(100).default(DEFAULT_PER_PAGE),
+  perPage: z.coerce.number().int().min(1).max(MAX_PER_PAGE).default(DEFAULT_PER_PAGE),
   search: z.string().trim().default(""),
   status: z.union([contentStatusSchema, z.literal("any")]).default("any"),
   sort: z.string().trim().default("updatedAt"),

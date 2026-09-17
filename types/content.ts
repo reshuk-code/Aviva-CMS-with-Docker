@@ -1,6 +1,7 @@
 import type { ContentRecord, BaseRecord, ID } from "./common";
 import type { SeoMeta } from "./seo";
 import type { PageBody } from "./blocks";
+import type { RichListContent } from "./rich-text";
 
 /* ------------------------------------------------------------------ media */
 
@@ -16,6 +17,8 @@ export const MEDIA_KINDS = [
 export type MediaKind = (typeof MEDIA_KINDS)[number];
 
 export interface MediaItem extends BaseRecord {
+  /** SHA-256 fingerprint used to reuse identical uploads. */
+  contentHash?: string;
   /** Path within the storage bucket. The adapter turns this into a URL. */
   key: string;
   url: string;
@@ -32,6 +35,39 @@ export interface MediaItem extends BaseRecord {
   /** Simple single-level folder, e.g. "tours" or "team". Null = root. */
   folder: string | null;
   uploadedBy: ID | null;
+}
+
+/* -------------------------------------------------------- featured images */
+
+/**
+ * The four shapes a client can hand us for one record, plus the gallery.
+ *
+ * One image cannot serve every slot: a 16:9 card crops a portrait badly and a
+ * 1920x700 banner crops it to a sliver. Rather than generate crops — this
+ * template ships no image decoder, and a crop is an editorial decision anyway —
+ * each shape is its own optional URL and the frontend picks the one its layout
+ * wants, falling back to `featuredImage`.
+ *
+ * `featuredImageVertical` is the one with a rule attached: where it is set, a
+ * card grid is expected to switch to portrait tiles for that record. See
+ * `pickFeaturedImage()` in `lib/images.ts`, which is the only place that
+ * fallback order is written down.
+ *
+ * All four are flat string fields for the same reason `featuredImage` always
+ * was: no adapter, table or collection changes shape, and a URL from a CDN the
+ * CMS does not manage stays valid.
+ */
+export interface FeaturedImageSet {
+  /** The default card image. Landscape, roughly 4:3 or 16:9. */
+  featuredImage: string | null;
+  /** A wider crop for list rows and side-by-side layouts. */
+  featuredImageHorizontal: string | null;
+  /** Portrait. Its presence is what switches a card grid to tall tiles. */
+  featuredImageVertical: string | null;
+  /** Page header. 1920x700 is the design default, not a validated constraint. */
+  bannerImage: string | null;
+  /** Photo gallery, in display order. */
+  gallery: string[];
 }
 
 /* ------------------------------------------------------------------- blog */
@@ -66,17 +102,15 @@ export interface Post extends ContentRecord {
  * free-text `region` on Destination is deliberately left alone; linking the two
  * would rewrite a field that eight display sites already read.
  */
-export interface Region extends ContentRecord {
+export interface Region extends ContentRecord, FeaturedImageSet {
   name: string;
   slug: string;
   shortDescription: string | null;
   description: string;
-  featuredImage: string | null;
-  gallery: string[];
   country: string | null;
   /** Free text, e.g. "2,800-5,400 m". Not a number: ranges are the norm. */
   elevationRange: string | null;
-  highlights: string[];
+  highlights: RichListContent;
   faqs?: TourFaq[];
   bestSeason: string[];
   featured: boolean;
@@ -86,18 +120,16 @@ export interface Region extends ContentRecord {
 
 /* ----------------------------------------------------------- destinations */
 
-export interface Destination extends ContentRecord {
+export interface Destination extends ContentRecord, FeaturedImageSet {
   name: string;
   slug: string;
   shortDescription: string | null;
   description: string;
-  featuredImage: string | null;
-  gallery: string[];
   country: string | null;
   region: string | null;
   latitude: number | null;
   longitude: number | null;
-  highlights: string[];
+  highlights: RichListContent;
   faqs?: TourFaq[];
   bestSeason: string[];
   /** Free text, e.g. "7-14 days". Tour packages carry precise durations. */
@@ -109,12 +141,11 @@ export interface Destination extends ContentRecord {
 
 /* -------------------------------------------------------------- activities */
 
-export interface Activity extends ContentRecord {
+export interface Activity extends ContentRecord, FeaturedImageSet {
   name: string;
   slug: string;
   description: string | null;
   icon: string | null;
-  featuredImage: string | null;
   faqs?: TourFaq[];
   order: number;
   seo: SeoMeta;
@@ -224,13 +255,12 @@ export interface TourFaq {
   category?: string | null;
 }
 
-export interface TourPackage extends ContentRecord {
+export interface TourPackage extends ContentRecord, FeaturedImageSet {
+  tripInfo?: string;
   name: string;
   slug: string;
   shortDescription: string | null;
   description: string;
-  featuredImage: string | null;
-  gallery: string[];
   /** Minor units are not used; store the display price. */
   price: number | null;
   /** Optional strike-through price for promotions. */
@@ -252,9 +282,9 @@ export interface TourPackage extends ContentRecord {
   destinationId: ID | null;
   activityIds: ID[];
   itinerary: ItineraryDay[];
-  inclusions: string[];
-  exclusions: string[];
-  highlights: string[];
+  inclusions: RichListContent;
+  exclusions: RichListContent;
+  highlights: RichListContent;
   faqs: TourFaq[];
   bestSeason: string[];
   featured: boolean;

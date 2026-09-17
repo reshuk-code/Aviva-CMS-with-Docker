@@ -3,6 +3,7 @@
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { RichTextField } from "@/components/cms/rich-text-field";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/field";
 
@@ -21,7 +22,9 @@ export function RepeatableField({
   placeholder,
   defaultValue = [],
   addLabel = "Add row",
+  richText = false,
 }: {
+  richText?: boolean;
   name: string;
   label: string;
   hint?: string;
@@ -57,13 +60,13 @@ export function RepeatableField({
           <label className="sr-only" htmlFor={`${name}-${row.key}`}>
             {label} {index + 1}
           </label>
-          <Input
+          {richText ? <div className="min-w-0 flex-1"><RichTextField id={`${name}-${row.key}`} name={name} label={`${label} ${index + 1}`} hideLabel defaultValue={row.value} onValueChange={(value) => update(row.key, value)} /></div> : <Input
             id={`${name}-${row.key}`}
             name={name}
             value={row.value}
             placeholder={placeholder}
             onChange={(event) => update(row.key, event.target.value)}
-          />
+          />}
 
           <Button
             type="button"

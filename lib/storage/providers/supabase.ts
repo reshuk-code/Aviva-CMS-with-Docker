@@ -60,6 +60,12 @@ export function createSupabaseStorageAdapter(
       };
     },
 
+    async read(key: string): Promise<Uint8Array> {
+      const { data, error } = await client.storage.from(bucket).download(key);
+      if (error || !data) throw new Error("Could not read stored media.");
+      return new Uint8Array(await data.arrayBuffer());
+    },
+
     async delete(key: string): Promise<boolean> {
       const { error } = await client.storage.from(bucket).remove([key]);
       return !error;

@@ -52,7 +52,11 @@ function parseFormData(
     slug: formString(formData.get("slug")) || formString(formData.get("name")),
     shortDescription: formString(formData.get("shortDescription")),
     description: formString(formData.get("description")),
+    tripInfo: formString(formData.get("tripInfo")),
     featuredImage: formString(formData.get("featuredImage")),
+    featuredImageHorizontal: formString(formData.get("featuredImageHorizontal")),
+    featuredImageVertical: formString(formData.get("featuredImageVertical")),
+    bannerImage: formString(formData.get("bannerImage")),
     gallery: formData.getAll("gallery").map(String),
 
     price: formString(formData.get("price")),
@@ -72,9 +76,9 @@ function parseFormData(
 
     itinerary,
     groupPricing,
-    inclusions: formData.getAll("inclusions").map(String),
-    exclusions: formData.getAll("exclusions").map(String),
-    highlights: formData.getAll("highlights").map(String),
+    inclusions: formString(formData.get("inclusions")),
+    exclusions: formString(formData.get("exclusions")),
+    highlights: formString(formData.get("highlights")),
     faqs: parseFaqRows(formData),
     bestSeason: formData.getAll("bestSeason").map(String),
 

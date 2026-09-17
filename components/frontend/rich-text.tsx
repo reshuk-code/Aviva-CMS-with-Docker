@@ -1,8 +1,14 @@
+import { VideoPlayer } from "@/components/ui/video-player";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { isSafeHref, isSafeImageSrc, toRichDoc } from "@/lib/rich-text";
-import type { RichNode } from "@/types/rich-text";
+import {
+  isSafeHref,
+  isSafeImageSrc,
+  toRichDoc,
+  toRichListContent,
+} from "@/lib/rich-text";
+import type { RichDoc, RichListContent, RichNode } from "@/types/rich-text";
 
 /**
  * Renders a stored rich text field.
@@ -19,8 +25,23 @@ import type { RichNode } from "@/types/rich-text";
  * has a single rendering path and callers never had to change.
  */
 export function RichText({ content }: { content: string }) {
-  const doc = toRichDoc(content);
+  return <RichDocument doc={toRichDoc(content)} />;
+}
 
+/**
+ * The same renderer for highlights, inclusions and exclusions.
+ *
+ * Those three are `RichListContent`: one document now, an array of short
+ * documents on any record written before the single editor landed. Both are
+ * folded to one document here, so a page renders whatever list the editor
+ * actually made — bulleted, numbered, or none at all — instead of a `<ul>` the
+ * layout imposed on it.
+ */
+export function RichListText({ content }: { content: RichListContent }) {
+  return <RichDocument doc={toRichListContent(content)} />;
+}
+
+function RichDocument({ doc }: { doc: RichDoc }) {
   // An editor that was opened but never written in stores a document holding
   // one empty paragraph. Rendering that would leave a stray blank paragraph on
   // the page, so treat it as no content at all.
@@ -102,6 +123,23 @@ function renderNode(node: RichNode, key: number): ReactNode {
         </pre>
       );
 
+    case "table":
+      return <div key={key} className="w-full overflow-x-auto"><table className="w-full table-fixed border-collapse"><tbody>{renderChildren(node)}</tbody></table></div>;
+    case "tableRow":
+      return <tr key={key}>{renderChildren(node)}</tr>;
+    case "tableCell":
+    case "tableHeader": {
+      const Cell = node.type === "tableHeader" ? "th" : "td";
+      const span = (value: unknown) => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 1000 ? value : 1;
+      return <Cell key={key} colSpan={span(node.attrs?.colspan)} rowSpan={span(node.attrs?.rowspan)} className="border border-border p-3 text-left align-top wrap-anywhere">{renderChildren(node)}</Cell>;
+    }
+    case "video": {
+      if (!isSafeImageSrc(node.attrs?.src)) return null;
+      return <figure key={key} className="my-6">
+        <VideoPlayer caption={typeof node.attrs.caption === "string" ? node.attrs.caption : undefined} src={node.attrs.src} title={typeof node.attrs.title === "string" ? node.attrs.title : undefined} />
+        {typeof node.attrs.caption === "string" && node.attrs.caption && <figcaption className="mt-2 text-left text-sm text-muted-foreground">{node.attrs.caption}</figcaption>}
+      </figure>;
+    }
     case "image": {
       const src = node.attrs?.src;
       // An unsafe or absent source renders nothing rather than a broken image
@@ -115,11 +153,14 @@ function renderNode(node: RichNode, key: number): ReactNode {
             <img
               src={src}
               alt={typeof node.attrs?.alt === "string" ? node.attrs.alt : ""}
+              title={typeof node.attrs?.title === "string" ? node.attrs.title : undefined}
               loading="lazy"
               data-lightbox
               className="w-full object-cover"
             />
           </div>
+          {typeof node.attrs?.caption === "string" && node.attrs.caption && <figcaption className="mt-2 text-left text-sm text-muted-foreground">{node.attrs.caption}</figcaption>}
+          {typeof node.attrs?.description === "string" && node.attrs.description && <p className="mt-2 text-sm">{node.attrs.description}</p>}
         </figure>
       );
     }

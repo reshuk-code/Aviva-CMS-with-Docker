@@ -149,13 +149,25 @@ export function FormSection({
   const bodyId = id ? `${id}-body` : undefined;
 
   if (insideContentPanel && tab) {
+    /*
+     * The heading is dropped when the tab holds this section alone, because
+     * the tab above it already carries the same word — "Include" printed
+     * twice, six pixels apart, is noise an editor has to read past. A tab that
+     * groups several sections still needs them told apart, so it keeps them.
+     */
+    const headed = tab.sectionIds.length > 1;
+
     return (
       <div id={id} hidden={!inActiveTab} className="border-t border-border px-5 py-5">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {headed ? (
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        ) : null}
         {description ? (
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         ) : null}
-        <div className={cn("mt-5", bodyClassName)}>{children}</div>
+        <div className={cn(headed || description ? "mt-5" : undefined, bodyClassName)}>
+          {children}
+        </div>
       </div>
     );
   }

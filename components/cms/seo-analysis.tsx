@@ -87,9 +87,10 @@ export function SeoAnalysis(input: SeoAnalysisInput) {
         ))}
       </ul>
 
-      <p className="mt-3 border-t border-border pt-3 text-[11px] leading-relaxed text-muted-foreground">
-        These are mechanical checks, not a ranking prediction. A page can score
-        100 and rank nowhere, and a genuinely useful page can score 60.
+      {/* Trimmed to one line, not dropped: a score with no caveat gets read as
+          a ranking prediction, and no honest tool can offer one. */}
+      <p className="mt-3 border-t border-border pt-3 text-[11px] text-muted-foreground">
+        Mechanical checks, not a ranking prediction.
       </p>
     </div>
   );

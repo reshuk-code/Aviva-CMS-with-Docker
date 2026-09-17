@@ -8,7 +8,7 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { activities } from "@/lib/cms/repositories/activities";
 import { settings } from "@/lib/cms/repositories/settings";
 import { tours } from "@/lib/cms/repositories/tours";
-import { formatDateTime } from "@/lib/utils";
+import { describeRecord } from "@/lib/record-meta";
 
 export const metadata = { title: "Edit activity" };
 
@@ -33,7 +33,7 @@ export default async function EditActivityPage({
     <>
       <PageHeader
         title={activity.name}
-        description={`Last updated ${formatDateTime(activity.updatedAt)}`}
+        description={describeRecord(activity)}
         breadcrumbs={[
           { label: "Activities", href: "/admin/activities" },
           { label: activity.name },

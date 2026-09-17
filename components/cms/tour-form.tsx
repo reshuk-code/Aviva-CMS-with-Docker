@@ -7,13 +7,12 @@ import { saveTourAction } from "@/app/admin/(dashboard)/tours/actions";
 import { FaqEditor } from "@/components/cms/faq-editor";
 import { GroupPricingEditor } from "@/components/cms/group-pricing-editor";
 import { ContentManagementPanel, FormSection, FormSections } from "@/components/cms/form-sections";
-import { GalleryField } from "@/components/cms/gallery-field";
-import { ImageField } from "@/components/cms/image-field";
+import { FeaturedImagesField } from "@/components/cms/featured-images-field";
 import { ItineraryEditor } from "@/components/cms/itinerary-editor";
 import { MediaLibraryPanel } from "@/components/cms/media-drawer";
-import { RepeatableField } from "@/components/cms/repeatable-field";
 import { RichTextField } from "@/components/cms/rich-text-field";
 import { SeoFields } from "@/components/cms/seo-fields";
+import { SeoJumpCard } from "@/components/cms/seo-jump-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import {
@@ -27,6 +26,7 @@ import { useFormFeedback } from "@/hooks/use-form-feedback";
 import { IDLE } from "@/lib/actions/result";
 import { slugify } from "@/schemas/common";
 import { MONTHS } from "@/schemas/destination";
+import { richListContentToValue } from "@/lib/rich-text";
 import { toDateTimeLocal } from "@/lib/utils";
 import { TOUR_DIFFICULTIES, type TourPackage } from "@/types/content";
 
@@ -46,22 +46,35 @@ const DIFFICULTY_LABELS: Record<string, string> = {
  * array each render would rebuild the observer on every keystroke.
  */
 const SECTIONS = [
-  { id: "section-description", label: "Description" },
+  { id: "section-trip", label: "Facts" },
   { id: "section-pricing", label: "Pricing" },
-  { id: "section-trip", label: "The trip" },
+  { id: "section-description", label: "Overview" },
+  { id: "section-highlights", label: "Highlights" },
+  { id: "section-info", label: "Info" },
   { id: "section-itinerary", label: "Itinerary" },
-  { id: "section-highlights", label: "Trip highlights" },
-  { id: "section-inclusions", label: "Inclusions" },
+  { id: "section-inclusions", label: "Include" },
+  { id: "section-images", label: "Images" },
   { id: "section-faqs", label: "FAQs" },
-  { id: "section-photographs", label: "Photographs" },
   { id: "section-seo", label: "SEO" },
 ];
 
+/**
+ * One tab per section, in the order the client asked for.
+ *
+ * Deliberately not grouped — an earlier version put pricing and facts behind
+ * one tab and inclusions behind "Highlights", and an editor looking for
+ * "what's included" had to guess which of five tabs hid it. A tab per section
+ * is longer but it is a table of contents rather than a puzzle.
+ */
 const CONTENT_TABS = [
-  { id: "facts", label: "Facts", sectionIds: ["section-pricing", "section-trip"] },
-  { id: "overview", label: "Overview", sectionIds: ["section-description", "section-itinerary"] },
-  { id: "highlights", label: "Highlights", sectionIds: ["section-highlights", "section-inclusions"] },
-  { id: "info", label: "Info", sectionIds: ["section-photographs"] },
+  { id: "facts", label: "Facts", sectionIds: ["section-trip"] },
+  { id: "pricing", label: "Pricing", sectionIds: ["section-pricing"] },
+  { id: "overview", label: "Overview", sectionIds: ["section-description"] },
+  { id: "highlights", label: "Highlights", sectionIds: ["section-highlights"] },
+  { id: "info", label: "Info", sectionIds: ["section-info"] },
+  { id: "itinerary", label: "Itinerary", sectionIds: ["section-itinerary"] },
+  { id: "include", label: "Include", sectionIds: ["section-inclusions"] },
+  { id: "images", label: "Images", sectionIds: ["section-images"] },
   { id: "faqs", label: "FAQs", sectionIds: ["section-faqs"] },
 ];
 
@@ -222,112 +235,7 @@ export function TourForm({
 
           <ContentManagementPanel>
 
-          <FormSection id="section-description" title="Trip overview">
-              <RichTextField
-                id="description"
-                name="description"
-                label="Tour description"
-                hideLabel
-                defaultValue={tour?.description ?? ""}
-                error={errors.description?.[0]}
-                onValueChange={setSeoContent}
-              />
-          </FormSection>
-
-          <FormSection
-            id="section-pricing"
-            title="Pricing"
-            description="Display prices. This CMS never processes a payment."
-            bodyClassName="space-y-4"
-          >
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field id="price" label="Price" error={errors.price?.[0]}>
-                  {(props) => (
-                    <Input
-                      {...props}
-                      name="price"
-                      defaultValue={tour?.price ?? ""}
-                      inputMode="decimal"
-                      placeholder="1450"
-                    />
-                  )}
-                </Field>
-
-                <Field
-                  id="compareAtPrice"
-                  label="Compare at"
-                  error={errors.compareAtPrice?.[0]}
-                  hint="Optional. Shown struck through."
-                >
-                  {(props) => (
-                    <Input
-                      {...props}
-                      name="compareAtPrice"
-                      defaultValue={tour?.compareAtPrice ?? ""}
-                      inputMode="decimal"
-                      placeholder="1650"
-                    />
-                  )}
-                </Field>
-
-                <Field
-                  id="currency"
-                  label="Currency"
-                  error={errors.currency?.[0]}
-                >
-                  {(props) => (
-                    <Input
-                      {...props}
-                      name="currency"
-                      value={currency}
-                      onChange={(event) => setCurrency(event.target.value)}
-                      placeholder="USD"
-                      maxLength={3}
-                      className="uppercase"
-                    />
-                  )}
-                </Field>
-              </div>
-
-              <Field
-                id="priceNote"
-                label="Price note"
-                error={errors.priceNote?.[0]}
-                hint="The small print beside the number."
-              >
-                {(props) => (
-                  <Input
-                    {...props}
-                    name="priceNote"
-                    defaultValue={tour?.priceNote ?? ""}
-                    placeholder="per person, twin share, excluding international flights"
-                  />
-                )}
-              </Field>
-
-              <div className="border-t border-border pt-4">
-                <p className="text-sm font-medium">Group rates</p>
-                <p className="mt-1 mb-3 text-xs text-muted-foreground">
-                  Per-person prices that fall as the party grows. Bands may not
-                  overlap; leave a gap and those party sizes pay the price
-                  above. Leave this empty for one price for everyone.
-                </p>
-
-                <GroupPricingEditor
-                  name="groupPricing"
-                  defaultValue={tour?.groupPricing ?? []}
-                  currency={currency.toUpperCase() || "USD"}
-                  errors={errors}
-                />
-              </div>
-          </FormSection>
-
-          <FormSection
-            id="section-trip"
-            title="The trip"
-            description="What a customer compares before booking."
-            bodyClassName="space-y-5"
-          >
+          <FormSection id="section-trip" title="Facts" bodyClassName="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   id="durationDays"
@@ -448,14 +356,119 @@ export function TourForm({
                   ))}
                 </div>
               </fieldset>
-
           </FormSection>
 
-          <FormSection
-            id="section-itinerary"
-            title="Itinerary"
-            description="Day by day. Reorder with the arrows; days are renumbered when you save."
-          >
+          <FormSection id="section-pricing" title="Pricing" bodyClassName="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field id="price" label="Price" error={errors.price?.[0]}>
+                  {(props) => (
+                    <Input
+                      {...props}
+                      name="price"
+                      defaultValue={tour?.price ?? ""}
+                      inputMode="decimal"
+                      placeholder="1450"
+                    />
+                  )}
+                </Field>
+
+                <Field
+                  id="compareAtPrice"
+                  label="Compare at"
+                  error={errors.compareAtPrice?.[0]}
+                >
+                  {(props) => (
+                    <Input
+                      {...props}
+                      name="compareAtPrice"
+                      defaultValue={tour?.compareAtPrice ?? ""}
+                      inputMode="decimal"
+                      placeholder="1650"
+                    />
+                  )}
+                </Field>
+
+                <Field
+                  id="currency"
+                  label="Currency"
+                  error={errors.currency?.[0]}
+                >
+                  {(props) => (
+                    <Input
+                      {...props}
+                      name="currency"
+                      value={currency}
+                      onChange={(event) => setCurrency(event.target.value)}
+                      placeholder="USD"
+                      maxLength={3}
+                      className="uppercase"
+                    />
+                  )}
+                </Field>
+              </div>
+
+              <Field
+                id="priceNote"
+                label="Price note"
+                error={errors.priceNote?.[0]}
+              >
+                {(props) => (
+                  <Input
+                    {...props}
+                    name="priceNote"
+                    defaultValue={tour?.priceNote ?? ""}
+                    placeholder="per person, twin share, excluding international flights"
+                  />
+                )}
+              </Field>
+
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-sm font-medium">Group rates</p>
+
+                <GroupPricingEditor
+                  name="groupPricing"
+                  defaultValue={tour?.groupPricing ?? []}
+                  currency={currency.toUpperCase() || "USD"}
+                  errors={errors}
+                />
+              </div>
+          </FormSection>
+
+          <FormSection id="section-description" title="Overview">
+              <RichTextField
+                id="description"
+                name="description"
+                label="Overview"
+                hideLabel
+                defaultValue={tour?.description ?? ""}
+                error={errors.description?.[0]}
+                onValueChange={setSeoContent}
+              />
+          </FormSection>
+
+          <FormSection id="section-highlights" title="Highlights">
+            <RichTextField
+              id="highlights"
+              name="highlights"
+              label="Highlights"
+              hideLabel
+              defaultValue={richListContentToValue(tour?.highlights)}
+              error={errors.highlights?.[0]}
+            />
+          </FormSection>
+
+          <FormSection id="section-info" title="Info">
+            <RichTextField
+              id="tripInfo"
+              name="tripInfo"
+              label="Info"
+              hideLabel
+              defaultValue={tour?.tripInfo ?? ""}
+              error={errors.tripInfo?.[0]}
+            />
+          </FormSection>
+
+          <FormSection id="section-itinerary" title="Itinerary">
               <ItineraryEditor
                 name="itinerary"
                 defaultValue={tour?.itinerary ?? []}
@@ -463,66 +476,43 @@ export function TourForm({
               />
           </FormSection>
 
-          <FormSection id="section-highlights" title="Trip highlights">
-            <RepeatableField
-              name="highlights"
-              label="Highlights"
-              placeholder="Kala Patthar at sunrise"
-              addLabel="Add highlight"
-              defaultValue={tour?.highlights ?? []}
-            />
-          </FormSection>
-
+          {/*
+            Stacked, not side by side. Two editors in a 50% column gave each
+            one a toolbar that wrapped onto three rows and a writing surface
+            narrower than the lines going into it.
+          */}
           <FormSection
             id="section-inclusions"
-            title="What is and is not included"
-            description="The two lists that prevent most pre-booking emails."
-            bodyClassName="grid gap-6 sm:grid-cols-2"
+            title="Include"
+            bodyClassName="space-y-6"
           >
-              <RepeatableField
+              <RichTextField
+                id="inclusions"
                 name="inclusions"
                 label="Included"
-                placeholder="All meals during the trek"
-                addLabel="Add inclusion"
-                defaultValue={tour?.inclusions ?? []}
+                defaultValue={richListContentToValue(tour?.inclusions)}
+                error={errors.inclusions?.[0]}
               />
 
-              <RepeatableField
+              <RichTextField
+                id="exclusions"
                 name="exclusions"
                 label="Not included"
-                placeholder="International flights"
-                addLabel="Add exclusion"
-                defaultValue={tour?.exclusions ?? []}
+                defaultValue={richListContentToValue(tour?.exclusions)}
+                error={errors.exclusions?.[0]}
               />
           </FormSection>
 
-          <FormSection
-            id="section-faqs"
-            title="Frequently asked questions"
-          >
+          <FormSection id="section-images" title="Images">
+              <FeaturedImagesField
+                record={tour}
+                errors={errors}
+                onFeaturedChange={setSeoImage}
+              />
+          </FormSection>
+
+          <FormSection id="section-faqs" title="FAQs">
               <FaqEditor defaultValue={tour?.faqs ?? []} />
-          </FormSection>
-
-          <FormSection
-            id="section-photographs"
-            title="Photographs"
-            bodyClassName="space-y-5"
-          >
-              <ImageField
-                id="featuredImage"
-                name="featuredImage"
-                label="Featured image"
-                hint="Pick from the media library, or paste a URL from anywhere."
-                defaultValue={tour?.featuredImage ?? ""}
-                placeholder="/uploads/ebc-trek.jpg"
-                onValueChange={setSeoImage}
-              />
-
-              <GalleryField
-                name="gallery"
-                hint="Shown in the order below. Use the arrows to reorder."
-                defaultValue={tour?.gallery ?? []}
-              />
           </FormSection>
 
           </ContentManagementPanel>
@@ -538,6 +528,7 @@ export function TourForm({
             content={seoContent}
             featuredImage={seoImage || null}
           />
+
         </div>
 
         {/*
@@ -551,6 +542,8 @@ export function TourForm({
           stops that scroll chaining into the page.
         */}
         <div className="cms-scroll space-y-5 lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain">
+          <SeoJumpCard />
+
           <MediaLibraryPanel />
 
           <Card>

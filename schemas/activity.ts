@@ -1,9 +1,9 @@
+import { richContentSchema } from "./rich-text";
 import { z } from "zod";
 
 import {
   bareSlugSchema,
   contentStatusSchema,
-  optionalText,
   optionalUrl,
 } from "./common";
 import { seoSchema } from "./seo";
@@ -39,9 +39,13 @@ export const activityIconSchema = z
 export const activityInputSchema = z.object({
   name: z.string().trim().min(1, "Name is required.").max(200),
   slug: bareSlugSchema,
-  description: optionalText,
+  description: richContentSchema,
   icon: activityIconSchema,
   featuredImage: optionalUrl,
+  featuredImageHorizontal: optionalUrl,
+  featuredImageVertical: optionalUrl,
+  bannerImage: optionalUrl,
+  gallery: z.array(z.string().trim()).default([]),
   faqs: z.array(embeddedFaqSchema).max(50).default([]),
   order: z.coerce.number().int().default(0),
   status: contentStatusSchema.default("draft"),
