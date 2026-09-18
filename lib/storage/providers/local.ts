@@ -11,8 +11,8 @@ import {
 } from "../adapter";
 
 /**
- * Local filesystem storage: writes into `public/uploads/`, served by Next as
- * a static asset.
+ * Local filesystem storage: writes into `public/uploads/`. The /uploads route
+ * serves files created after the production server starts.
  *
  * Suitable for development and for a site on a single long-lived server.
  * On serverless hosts each instance has its own ephemeral disk, so uploads

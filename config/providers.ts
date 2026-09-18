@@ -97,6 +97,32 @@ export const DATABASE_PROVIDERS: ProviderDefinition<DatabaseProviderId>[] = [
     ],
   },
   {
+    id: "postgres",
+    kind: "database",
+    label: "Postgres",
+    description: "Self-hosted Postgres over TCP. Good fit for Docker on a VPS.",
+    status: "unverified",
+    fields: [
+      {
+        name: "connectionString",
+        label: "Connection string",
+        required: true,
+        envVar: "POSTGRES_DATABASE_URL",
+        help: "Example: postgresql://cms:cms_password@postgres:5432/cms",
+      },
+      {
+        name: "tablePrefix",
+        label: "Table prefix",
+        envVar: "POSTGRES_TABLE_PREFIX",
+        help: "Defaults to cms_.",
+      },
+    ],
+    setup: [
+      "Run adapters/postgres/schema.sql once, or use the provided docker-compose.yml to initialise the database automatically.",
+      "Set CMS_DATABASE=postgres and POSTGRES_DATABASE_URL in the app environment.",
+    ],
+  },
+  {
     id: "mongodb",
     kind: "database",
     label: "MongoDB",

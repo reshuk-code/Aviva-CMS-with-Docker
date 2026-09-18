@@ -25,6 +25,8 @@ const factories: Record<DatabaseProviderId, Factory> = {
   local: async () => (await import("@/adapters/local")).createLocalAdapter(),
   supabase: async (credentials) =>
     (await import("@/adapters/supabase")).createSupabaseAdapter(credentials),
+  postgres: async (credentials) =>
+    (await import("@/adapters/postgres")).createPostgresAdapter(credentials),
   neon: async (credentials) =>
     (await import("@/adapters/neon")).createNeonAdapter(credentials),
   mongodb: async (credentials) =>

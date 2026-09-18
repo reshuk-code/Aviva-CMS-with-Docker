@@ -104,7 +104,7 @@ admin. Add the variables, restart, and `/admin/settings/connections` reports
 what it detected.
 
 ```bash
-CMS_DATABASE=supabase        # local | supabase | neon | mongodb | firebase
+CMS_DATABASE=supabase        # local | supabase | postgres | neon | mongodb | firebase
 CMS_STORAGE=supabase         # local | supabase | s3
 CMS_AUTH=credentials         # credentials | supabase | neon | clerk
 ```
@@ -113,6 +113,11 @@ For Supabase or Neon, run `adapters/<provider>/schema.sql` against the project
 once before first use. Verified against live projects: the Supabase and Neon
 **database** adapters. Everything else is marked honestly in
 [`docs/ROADMAP.md`](docs/ROADMAP.md) — including what is not implemented at all.
+
+For one-VPS Docker hosting, use `CMS_DATABASE=postgres` and `CMS_STORAGE=local`.
+The included `docker-compose.yml` runs Postgres, initialises
+`adapters/postgres/schema.sql`, and stores uploads in a persistent Docker volume.
+See [`docs/XCLOUD_DOCKER.md`](docs/XCLOUD_DOCKER.md).
 
 Whichever authentication provider you choose, **roles stay in this CMS**. The
 provider proves who someone is; the CMS decides what they may do. Add each

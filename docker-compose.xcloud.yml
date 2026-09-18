@@ -1,0 +1,41 @@
+services:
+  app:
+    image: ${CMS_IMAGE:-reshukcode/trekking-cms:1}
+    restart: unless-stopped
+    environment:
+      CMS_DATABASE: postgres
+      CMS_STORAGE: local
+      CMS_AUTH: credentials
+      POSTGRES_TABLE_PREFIX: cms_
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-cms}
+      POSTGRES_USER: ${POSTGRES_USER:-cms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      CMS_SESSION_SECRET: ${CMS_SESSION_SECRET:?Set CMS_SESSION_SECRET}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?Set NEXT_PUBLIC_SITE_URL}
+    ports:
+      - "${APP_PORT:-6000}:3000"
+    volumes:
+      - cms_uploads:/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cms}
+      POSTGRES_USER: ${POSTGRES_USER:-cms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  cms_uploads:

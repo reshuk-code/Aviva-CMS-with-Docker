@@ -9,6 +9,7 @@
 export const DATABASE_PROVIDER_IDS = [
   "local",
   "supabase",
+  "postgres",
   "neon",
   "mongodb",
   "firebase",

@@ -1,0 +1,12 @@
+.git
+.next
+.cms-data
+node_modules
+npm-debug.log
+.env*
+dist
+*.tar.gz
+*.tsbuildinfo
+public/uploads
+Dockerfile
+docker-compose*.yml
