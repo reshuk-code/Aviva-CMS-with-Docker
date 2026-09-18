@@ -10,3 +10,5 @@ dist
 public/uploads
 Dockerfile
 docker-compose*.yml
+uploads
+backups

@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${CMS_IMAGE:-reshukcode/trekking-cms:1}
+    image: ${CMS_IMAGE:?Set CMS_IMAGE, e.g. aviva-cms:0.1.4}
     restart: unless-stopped
     environment:
       CMS_DATABASE: postgres
@@ -16,7 +16,9 @@ services:
     ports:
       - "${APP_PORT:-6000}:3000"
     volumes:
-      - cms_uploads:/app/public/uploads
+      # A plain folder beside this file, so uploads can be browsed and backed up
+      # without Docker commands. The app fixes its ownership on start.
+      - ${CMS_UPLOADS_DIR:-./uploads}:/app/public/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,6 +38,17 @@ services:
       timeout: 5s
       retries: 5
 
+  # Database browser. Bound to the VPS loopback only: reach it through an SSH
+  # tunnel (docs/XCLOUD_DOCKER.md), never through the public domain.
+  adminer:
+    image: adminer:5
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "127.0.0.1:${ADMINER_PORT:-8081}:8080"
+    depends_on:
+      - postgres
+
 volumes:
   postgres_data:
-  cms_uploads:

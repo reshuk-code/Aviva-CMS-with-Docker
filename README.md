@@ -115,8 +115,9 @@ once before first use. Verified against live projects: the Supabase and Neon
 [`docs/ROADMAP.md`](docs/ROADMAP.md) — including what is not implemented at all.
 
 For one-VPS Docker hosting, use `CMS_DATABASE=postgres` and `CMS_STORAGE=local`.
-The included `docker-compose.yml` runs Postgres, initialises
-`adapters/postgres/schema.sql`, and stores uploads in a persistent Docker volume.
+`npm run deploy` builds the image locally and ships it to the VPS over SSH, where
+Postgres, an `uploads/` folder and a private Adminer run beside the app. No
+registry or external service is involved.
 See [`docs/XCLOUD_DOCKER.md`](docs/XCLOUD_DOCKER.md).
 
 Whichever authentication provider you choose, **roles stay in this CMS**. The

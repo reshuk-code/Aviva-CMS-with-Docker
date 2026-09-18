@@ -28,7 +28,8 @@ COPY --from=builder --chown=nextjs:nextjs /app/adapters/postgres/schema.sql ./ad
 
 RUN mkdir -p /app/public/uploads && chown -R nextjs:nextjs /app/public/uploads
 
-USER nextjs
+# No USER line: docker-start.mjs starts as root only to take ownership of a
+# bind-mounted uploads folder, then drops to nextjs before touching anything else.
 EXPOSE 3000
 
 CMD ["node", "scripts/docker-start.mjs"]

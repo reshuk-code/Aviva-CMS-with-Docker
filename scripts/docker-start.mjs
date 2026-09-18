@@ -1,8 +1,17 @@
 import { readFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import pg from "pg";
 
 try {
+  if (process.getuid?.() === 0) {
+    // A bind-mounted uploads folder arrives owned by whoever created it on the
+    // host, which nextjs cannot write to. Fix that, then give up root for good.
+    const chown = spawnSync("chown", ["-R", "nextjs:nextjs", "/app/public/uploads"], { stdio: "inherit" });
+    if (chown.status !== 0) throw new Error("Could not take ownership of /app/public/uploads.");
+    process.setgroups([]);
+    process.setgid("nextjs");
+    process.setuid("nextjs");
+  }
   if ((process.env.CMS_SESSION_SECRET?.trim().length ?? 0) < 32) {
     throw new Error("CMS_SESSION_SECRET must contain at least 32 characters.");
   }

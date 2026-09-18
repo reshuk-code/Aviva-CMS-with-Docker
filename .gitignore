@@ -40,6 +40,8 @@ next-env.d.ts
 # .env.local carries the service-role key, which bypasses row level security.
 .env*
 !.env.example
+!.env.docker.example
+!.env.deploy.example
 *.pem
 *.key
 *.p12
@@ -61,6 +63,11 @@ next-env.d.ts
 # Real projects use Supabase Storage or S3; these are development leftovers.
 /public/uploads/
 /public/uploads/**
+
+# Written by a local run of docker-compose.xcloud.yml, and by server-deploy.sh
+# on the VPS: live uploads and database dumps.
+/uploads/
+/backups/
 
 # --- Logs --------------------------------------------------------------------
 *.log

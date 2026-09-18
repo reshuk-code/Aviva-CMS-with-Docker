@@ -1,6 +1,6 @@
 {
   "name": "avivaReusableDashboard",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "private": true,
   "author": "Aviva Web Technologies",
   "scripts": {
@@ -13,7 +13,8 @@
     "cms:routes": "node scripts/scan-routes.mjs",
     "cms:secret": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
     "cms:reset": "node scripts/reset-local-data.mjs",
-    "cms:seed": "node scripts/seed-demo-content.mjs"
+    "cms:seed": "node scripts/seed-demo-content.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.1",
