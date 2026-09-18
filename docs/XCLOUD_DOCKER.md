@@ -36,7 +36,7 @@ On your computer:
    VPS (a server admin task in xCloud).
 
 On the VPS, the site folder needs a `.env`. Start from `.env.docker.example`:
-set `APP_PORT=6000`, `NEXT_PUBLIC_SITE_URL` to the HTTPS domain,
+set `APP_PORT` and `ADMINER_PORT` (see [Ports](#ports)), `NEXT_PUBLIC_SITE_URL` to the HTTPS domain,
 `POSTGRES_PASSWORD` and `CMS_SESSION_SECRET` to separate values from
 `openssl rand -hex 32`. Leave `CMS_IMAGE` out; the deploy writes it.
 
@@ -69,9 +69,35 @@ npm run deploy -- --rollback 0.1.3
 Code rolls back; the database does not. If a release changed data, restore the
 matching dump from `backups/`.
 
-Configure xCloud's domain proxy to host port 6000 (container port 3000). Visit
-your HTTPS domain and `/admin/setup` on a new site. Do not put `:6000` in the
-public URL when using xCloud's HTTPS proxy.
+Configure xCloud's domain proxy to the site's `APP_PORT` (container port 3000).
+Visit your HTTPS domain and `/admin/setup` on a new site. Do not put the port in
+the public URL when using xCloud's HTTPS proxy.
+
+## Ports
+
+Two sites on one VPS cannot listen on the same port, so each site's `.env`
+needs its own pair:
+
+| Site | `APP_PORT` | `ADMINER_PORT` |
+|---|---|---|
+| first site | 6000 | 8081 |
+| second site | 6010 | 8091 |
+| third site | 6020 | 8101 |
+
+Before switching anything over, the deploy checks both ports. If another site
+or program already holds one, it stops, leaves the running site untouched, and
+names a free port:
+
+```
+[server] APP_PORT=6000 is already in use by something else on this server.
+[server] Set APP_PORT=6001 (or another free port) in /var/www/your-site/.env.
+[server] Then point xCloud's domain proxy at port 6001.
+```
+
+It does not change the port for you: xCloud's proxy has to point at the same
+number, and a silently moved port would take the site offline. To see what is
+taken on the server: `ss -ltn` or `docker ps --format '{{.Names}} {{.Ports}}'`.
+Use the same `ADMINER_PORT` in the SSH tunnel command below.
 
 ## Viewing the database
 
@@ -79,7 +105,7 @@ Adminer runs beside the app but listens only on the VPS itself, so it is not
 reachable from the internet. Open a tunnel from your computer:
 
 ```bash
-ssh -L 8081:127.0.0.1:8081 USER@HOST
+ssh -L 8081:127.0.0.1:8081 USER@HOST     # the second number is the site's ADMINER_PORT
 ```
 
 Leave that terminal open, browse to <http://localhost:8081>, and sign in with

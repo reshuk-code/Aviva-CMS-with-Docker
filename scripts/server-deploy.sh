@@ -26,6 +26,36 @@ if [ -z "$project" ]; then
 fi
 dc() { docker compose -p "$project" "$@"; }
 
+# Every site on this VPS needs its own ports. Check before anything changes:
+# a clash found by `docker compose up` would leave the site half switched over.
+env_value() {
+  grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | tr -d "\"' \r"
+}
+ours() {
+  docker ps --filter "label=com.docker.compose.project=$project" --format '{{.Ports}}' | grep -qE "[:.]$1->"
+}
+busy() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -Hltn "sport = :$1" 2>/dev/null | grep -q . && return 0
+  fi
+  docker ps --format '{{.Ports}}' | grep -qE "[:.]$1->"
+}
+clash=0
+for name in APP_PORT ADMINER_PORT; do
+  default=6000; [ "$name" = ADMINER_PORT ] && default=8081
+  port=$(env_value "$name"); port=${port:-$default}
+  # This site's own running containers hold its ports until they are replaced.
+  if ! ours "$port" && busy "$port"; then
+    free=$((port + 1))
+    while busy "$free"; do free=$((free + 1)); done
+    echo "[server] $name=$port is already in use by something else on this server."
+    echo "[server] Set $name=$free (or another free port) in $dir/.env."
+    [ "$name" = APP_PORT ] && echo "[server] Then point xCloud's domain proxy at port $free."
+    clash=1
+  fi
+done
+[ "$clash" = 0 ] || exit 1
+
 mkdir -p backups
 if [ -n "$(dc ps -q postgres 2>/dev/null)" ]; then
   backup="backups/cms-$(date +%Y%m%d-%H%M%S).sql.gz"

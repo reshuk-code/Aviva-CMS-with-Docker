@@ -186,9 +186,13 @@ npm version 0.1.5 --no-git-tag-version   # the version becomes the image tag
 npm run deploy
 ```
 
-That builds the image locally, sends it to the VPS over SSH, backs up the
-database, switches the site over and waits until it answers. If a release goes
-wrong, the previous three images are still on the server:
+That builds the image locally, sends it to the VPS over SSH, checks the site's
+ports are free, backs up the database, switches the site over and waits until it
+answers. Each site on the same VPS needs its own `APP_PORT` and `ADMINER_PORT`
+in its server `.env`; the deploy refuses a port that is already taken and
+suggests a free one.
+
+If a release goes wrong, the previous three images are still on the server:
 
 ```bash
 npm run deploy -- --rollback 0.1.4
